@@ -3,79 +3,70 @@
 Status: proposta de mapeamento. Não significa que a geometria ou semântica de todas as categorias já foi validada.
 
 ## 1. Regras gerais
-- Alvo inicial: IFC4.
-- O exportador é próprio e não chama o exportador IFC nativo do Advance Steel.
-- O exportador recebe o modelo neutro, nunca respostas MCP diretamente.
-- Cada entidade IFC recebe GlobalId válido gerado ou preservado somente quando houver evidência de identidade persistente.
-- Geometria simplificada deve ser identificada no relatório; não declarar equivalência com o sólido de fabricação.
-- Propriedades sem mapeamento padrão podem ser preservadas em conjuntos de propriedades customizados, com nome, tipo, unidade e proveniência.
+- Alvo inicial: IFC4; exportador próprio, sem usar o exportador nativo Advance Steel.
+- Receber somente o modelo neutro.
+- Preservar todas as propriedades acessíveis na origem; não limitar a exportação a uma whitelist.
+- Mapear propriedades para semântica IFC padrão quando houver equivalência correta.
+- Exportar todas as propriedades restantes em Property Sets customizados.
+- Preservar nomes técnicos, valores, tipos, unidades e proveniência.
+- Relatar propriedades não acessíveis, com erro ou não aplicáveis; não alegar completude sem evidência.
 
-## 2. Estrutura espacial mínima proposta
-- IfcProject
-- IfcSite
-- IfcBuilding
-- IfcBuildingStorey quando fizer sentido para o modelo
-- IfcRelAggregates para a hierarquia espacial
-- IfcGeometricRepresentationContext e subcontextos necessários
-- IfcUnitAssignment com unidades explícitas
-- IfcProjectedCRS e IfcMapConversion para georreferenciamento IFC4, após validação da convenção e da biblioteca
-
-A hierarquia espacial não deve inventar pavimentos. Se o modelo não tiver informação de pavimento, usar uma estrutura mínima documentada.
+## 2. Estrutura espacial
+- IfcProject, IfcSite, IfcBuilding e IfcBuildingStorey quando aplicável.
+- IfcRelAggregates, IfcGeometricRepresentationContext e IfcUnitAssignment.
+- IfcProjectedCRS e IfcMapConversion para georreferenciamento IFC4, após validação.
 
 ## 3. Mapeamento por categoria
 
-| Categoria de origem | Entidade IFC candidata | Requisitos e ressalvas |
+| Categoria | Entidade IFC candidata | Ressalvas |
 |---|---|---|
-| beam | IfcBeam | Eixo, perfil/seção, material e orientação; cortes e furos exigem geometria adicional |
-| plate | IfcPlate | Espessura, contorno, posição e furos; dimensões nominais não bastam para contorno real |
-| bolts | IfcMechanicalFastener | Diâmetro, comprimento, classe, quantidade e geometria/posição; conjuntos podem precisar ser individualizados |
-| anchors | IfcMechanicalFastener | Distinguir chumbador de parafuso por tipo/atributos; não inferir geometria ausente |
-| weld | IfcWeld quando aplicável ao esquema e à semântica disponível | Tipo, tamanho, comprimento, posição e relação entre peças precisam estar disponíveis |
-| special_part | Depende da classificação; IfcBuildingElementProxy apenas como fallback explícito | Não classificar semanticamente sem evidência |
-| connector | Depende da natureza; possível IfcElementAssembly, IfcMechanicalFastener ou proxy | Inspecionar o significado real da categoria antes de escolher |
+| beam | IfcBeam | Geometria e cortes precisam de dados suficientes |
+| plate | IfcPlate | Contorno, furos, espessura e posição |
+| bolts | IfcMechanicalFastener | Individualização e geometria conforme dados |
+| anchors | IfcMechanicalFastener | Distinguir de parafusos por atributos |
+| weld | IfcWeld quando aplicável | Relações e atributos devem ser comprovados |
+| special_part | Tipo específico ou IfcBuildingElementProxy como fallback | Não inferir semântica |
+| connector | Depende da natureza | Inspecionar antes de mapear |
 
-O tipo IFC final deverá ser conferido contra o schema IFC4 efetivamente utilizado pela biblioteca selecionada.
+## 4. Estratégia de propriedades: preservação integral
 
-## 4. Geometria e representações
-A implementação deverá priorizar a representação mais fiel disponível:
-1. Sólido/BRep válido, se obtido da origem.
-2. Geometria paramétrica reconstruída a partir de parâmetros suficientes e verificados.
-3. Tesselação validada, com tolerância conhecida.
-4. Sem geometria, apenas se o caso de uso permitir e o relatório indicar claramente a limitação.
+### 4.1 Mapeamento IFC padrão
+Quando o significado e o tipo coincidirem com o schema, usar atributos IFC, materiais, classificações, relações, quantidades e Psets padronizados.
 
-Não reconstruir uma viga apenas por comprimento e perfil quando houver cortes, furos, recortes ou orientação não representados pelos dados disponíveis.
+### 4.2 Propriedades específicas do Advance Steel
+Criar Psets customizados por categoria/classe e grupo de origem, preservando:
+- nome técnico original;
+- rótulo amigável, quando disponível;
+- valor;
+- tipo de dado;
+- unidade;
+- origem/método de leitura.
 
-## 5. Propriedades
-Preservar, quando disponíveis:
-- identificação de origem e handle;
-- nome/denominação, descrição, layer e role;
-- material e revestimento;
-- perfil, dimensões e espessura;
-- peso, área de pintura e quantidades;
-- números de peça e conjunto;
-- propriedades específicas de parafusos, chumbadores e soldas.
+User Attributes e atributos customizados também devem ser exportados. Propriedades desconhecidas não podem ser descartadas só por não haver mapeamento padrão.
 
-Usar propriedades IFC padrão quando o significado e o tipo forem compatíveis. Caso contrário, criar um Pset próprio com prefixo do produto, por exemplo Pset_BrunnoAdvanceSteel_*, evitando sobrescrever conjuntos padronizados.
+### 4.3 Tipagem e valores especiais
+Distinguir texto, inteiro, real, booleano, enumeração, lista, referência e demais tipos que a API disponibilizar. Distinguir zero, falso, string vazia, nulo, não aplicável, indisponível e erro de leitura. Valores complexos devem ser serializados de modo reversível ou registrados como estrutura complementar, sem conversão silenciosa para texto simplificado.
+
+## 5. Geometria
+Prioridade: BRep/sólido válido; geometria paramétrica reconstruída com parâmetros suficientes; tesselação validada. Representações simplificadas devem ser identificadas. Propriedades não substituem geometria.
 
 ## 6. Relacionamentos
-Relações entre peças, conjuntos, parafusos, chumbadores e soldas só serão criadas quando a origem fornecer vínculo verificável. Proximidade geométrica não é prova suficiente de conexão.
+Criar relações entre peças, conjuntos, parafusos, chumbadores e soldas apenas com vínculo verificável. Proximidade não prova conexão.
 
 ## 7. Relatório de exportação
-O relatório deverá apresentar:
-- total lido por categoria;
-- total exportado por entidade IFC;
+Apresentar:
+- totais lidos/exportados por categoria;
+- inventário de propriedades descobertas e lidas;
+- propriedades exportadas em IFC padrão e em Psets customizados;
+- propriedades indisponíveis, com erro ou não aplicáveis;
 - elementos parciais, ignorados e não suportados;
-- propriedades preservadas e não mapeadas;
-- tipo de representação geométrica usada;
-- unidades;
-- sistema de referência, zona, hemisfério e parâmetros de transformação;
-- GlobalIds gerados e correspondência com os handles de origem.
+- representação geométrica usada;
+- unidades e parâmetros de georreferenciamento;
+- correspondência entre handles e GlobalIds.
 
-## 8. Critérios de validação
-- Arquivo abre em pelo menos um visualizador IFC independente.
-- Schema declarado e efetivo é IFC4.
+## 8. Validação
+- IFC4 abre em visualizador independente.
 - Todas as entidades têm GlobalId válido.
-- Contagens por categoria batem com o relatório.
-- Unidades e dimensões são conferidas contra o modelo de origem.
-- Pontos de controle e pontos de verificação conferem após georreferenciamento.
-- Elementos simplificados/incompletos são identificáveis no relatório.
+- Comparar propriedades lidas no IFC com valores de origem por amostragem e por testes automatizados.
+- Verificar contagens, dimensões, unidades e coordenadas.
+- Relatar toda perda conhecida.
