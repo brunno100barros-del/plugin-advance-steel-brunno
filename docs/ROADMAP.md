@@ -3,7 +3,6 @@
 Este roadmap separa preparação, validação técnica e implementação. Uma etapa só será considerada concluída quando seus critérios puderem ser verificados.
 
 ## Etapa 1 — Fundação do projeto
-
 - [x] Criar estrutura modular.
 - [x] Registrar premissas e decisões pendentes.
 - [x] Separar MCP, modelo neutro, georreferenciamento e exportação IFC.
@@ -12,31 +11,30 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [x] Inspecionar código e protocolo do AdvancedSteelMCP.
 
 ## Etapa 2 — Prova de integração com Advance Steel e MCP
-
-- [x] Identificar comunicação MCP, TCP local e despacho para thread principal.
+- [x] Revisar estaticamente comunicação MCP, TCP local e despacho para thread principal.
 - [x] Identificar projetos Loader/Core e referências Autodesk declaradas.
 - [x] Inventariar operações de leitura e categorias de objetos.
-- [x] Registrar unidades, identificadores e limitações observáveis.
-- [ ] Confirmar versão/runtime efetivos da instalação Advance Steel 2027 do usuário.
-- [ ] Executar advsteel_status com Advance Steel aberto.
-- [ ] Extrair amostra somente de leitura com advsteel_list_objects e advsteel_get_objects.
-- [ ] Validar amostras reais de vigas, chapas, parafusos, chumbadores e soldas, conforme existirem.
-- [ ] Comparar contagens e propriedades com o modelo.
-- [ ] Verificar desenho vazio, modelo real, seleção vazia, timeout e erro de conexão.
+- [x] Usuário confirmou que o MCP original está funcionando em seu ambiente.
+- [ ] Registrar respostas JSON reais de leitura e amostras por categoria.
+- [ ] Confirmar versão/runtime efetivos e unidades do desenho de teste.
+- [ ] Comparar contagens e propriedades extraídas com o modelo.
+- [ ] Verificar casos de desenho vazio, seleção vazia, timeout e erro de conexão.
 
-**Resultado parcial:** revisão estática concluída. A integração em execução depende de teste no computador com Advance Steel.
+**Resultado:** funcionamento geral do MCP confirmado pelo usuário. A cobertura e a qualidade dos dados necessários ao IFC ainda não foram comprovadas por amostras documentadas.
 
-**Critério de saída:** extração reproduzível de elementos de teste, com evidência dos dados retornados e unidades.
+## Etapa 3 — Contrato do modelo neutro
+- [x] Definir princípios de independência do MCP e da API Autodesk.
+- [x] Definir identidade de origem, identidade interna e estratégia provisória de GlobalId IFC.
+- [x] Definir categorias iniciais e estados de validação.
+- [x] Definir requisitos de geometria, unidades, proveniência e rastreabilidade.
+- [x] Elaborar matriz inicial de mapeamento IFC4.
+- [ ] Conferir contrato com JSONs reais de viga, chapa e demais categorias.
+- [ ] Implementar classes C# e conversores após validar as amostras.
+- [ ] Criar testes unitários do contrato e das conversões.
 
-## Etapa 3 — Modelo neutro de dados
-
-- [ ] Definir entidades, propriedades, unidades e identificadores persistentes.
-- [ ] Mapear perfis, chapas, parafusos, soldas, materiais e demais objetos.
-- [ ] Registrar mapeamento semântico IFC e limitações.
-- [ ] Criar testes de integridade e rastreabilidade.
+**Critério de saída:** o contrato é confirmado contra dados reais, implementado e testado sem dependência direta do MCP ou da API Autodesk.
 
 ## Etapa 4 — Georreferenciamento
-
 - [ ] Definir ponto de controle, coordenadas E/N/Z e unidade.
 - [ ] Definir convenção angular em relação ao Norte.
 - [ ] Definir zona UTM e validação.
@@ -44,7 +42,6 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Testar rotação, elevação, escala e tolerâncias.
 
 ## Etapa 5 — Exportador IFC4
-
 - [ ] Selecionar biblioteca IFC após prova de compatibilidade.
 - [ ] Construir estrutura espacial e unidades.
 - [ ] Converter geometria e propriedades.
@@ -53,7 +50,6 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Comparar coordenadas, dimensões, quantidades e propriedades.
 
 ## Etapa 6 — Interface, robustez e distribuição
-
 - [ ] Criar interface de ponto de controle e parâmetros.
 - [ ] Exibir validações e relatório de exportação.
 - [ ] Tratar erros sem bloquear ou corromper o modelo.
@@ -61,7 +57,6 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Validar em ambiente limpo com Advance Steel 2027.
 
 ## Fora do escopo
-
 - Não alterar o repositório original AdvancedSteelMCP.
 - Não substituir o exportador IFC nativo.
 - Não declarar suporte a objetos/propriedades sem testes.
