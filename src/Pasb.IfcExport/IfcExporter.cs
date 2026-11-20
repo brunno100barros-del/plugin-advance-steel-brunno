@@ -177,8 +177,10 @@ public static class IfcExporter
             case "axis" when g.Points.Count >= 2:
             {
                 int pl = w.Add("IfcPolyline", Refs(g.Points.Select(Pt)));
-                int rep = w.Add("IfcShapeRepresentation", Ref(axisCtx), Str("Axis"), Str("Curve3D"), "(" + Ref(pl) + ")");
-                return Ref(w.Add("IfcProductDefinitionShape", Null, Null, "(" + Ref(rep) + ")"));
+                var reps = new List<int> { w.Add("IfcShapeRepresentation", Ref(axisCtx), Str("Axis"), Str("Curve3D"), "(" + Ref(pl) + ")") };
+                if (BeamBody(w, g, s, r) is int solid)
+                    reps.Add(w.Add("IfcShapeRepresentation", Ref(bodyCtx), Str("Body"), Str("SweptSolid"), "(" + Ref(solid) + ")"));
+                return Ref(w.Add("IfcProductDefinitionShape", Null, Null, Refs(reps)));
             }
             case "contour" when g.Points.Count >= 3 && g.Normal is { } n && g.Dimensions.TryGetValue("thickness", out double t):
             {
@@ -221,6 +223,55 @@ public static class IfcExporter
             default:
                 return Null;
         }
+    }
+
+    /// <summary>
+    /// Corpo da viga: perfil paramétrico IFC4 extrudado ao longo do eixo, no comprimento físico.
+    /// Orientação: profundidade (H) do perfil alinhada ao eixo Z local da viga no Advance Steel (coluna 2 de PhysCSStart),
+    /// conforme o Teste 10 (U100 com H ao longo do Z local). Tipos suportados: U e I (I só se as mesmas chaves existirem).
+    /// </summary>
+    private static int? BeamBody(StepWriter w, NeutralGeometry g, double s, ExportReport r)
+    {
+        if (!g.Dimensions.TryGetValue("section.H", out double h) || !g.Dimensions.TryGetValue("section.B", out double b)
+            || !g.Dimensions.TryGetValue("section.Tw", out double tw) || !g.Dimensions.TryGetValue("section.Tf", out double tf)
+            || g.CoordinateSystem is not { } cs || !g.Descriptors.TryGetValue("sectionShape", out string? shape))
+            return null;
+
+        double[] a = g.Points[0], bEnd = g.Points[^1];
+        double[] dir = Normalize(Sub(bEnd, a));
+        double[] localZ = { cs[0][2], cs[1][2], cs[2][2] };          // eixo Z local (colunas da Matrix3d)
+        double[] depthDir = Normalize(Sub(localZ, Scale(dir, Dot(localZ, dir))));
+        double[] refX = Cross(depthDir, dir);                        // X do perfil tal que Y do perfil = Z × X = depthDir
+        double r1 = g.Dimensions.GetValueOrDefault("section.R1"), r2 = g.Dimensions.GetValueOrDefault("section.R2");
+        string name = g.Descriptors.GetValueOrDefault("profileName") ?? shape;
+
+        int prof;
+        int origin2 = w.Add("IfcAxis2Placement2D", Ref(w.Add("IfcCartesianPoint", Point(0, 0))), Null);
+        switch (shape)
+        {
+            case "U":
+                prof = w.Add("IfcUShapeProfileDef", Enum("AREA"), Str(name), Ref(origin2), Real(h * s), Real(b * s), Real(tw * s), Real(tf * s),
+                    r1 > 0 ? Real(r1 * s) : Null, r2 > 0 ? Real(r2 * s) : Null, Null);
+                Note(r, "beam: perfil U paramétrico (IfcUShapeProfileDef); o lado de abertura das mesas não foi conferido visualmente.");
+                break;
+            case "I":
+                prof = w.Add("IfcIShapeProfileDef", Enum("AREA"), Str(name), Ref(origin2), Real(b * s), Real(h * s), Real(tw * s), Real(tf * s),
+                    r1 > 0 ? Real(r1 * s) : Null, Null, Null);
+                Note(r, "beam: perfil I paramétrico (IfcIShapeProfileDef); nomes das dimensões assumidos iguais aos do perfil U (não testado).");
+                break;
+            default:
+                Note(r, $"beam: tipo de seção '{shape}' sem mapeamento paramétrico; viga exportada só com o eixo.");
+                return null;
+        }
+
+        double offStart = g.Dimensions.GetValueOrDefault("offsetStart"), offEnd = g.Dimensions.GetValueOrDefault("offsetEnd");
+        double sysLen = Math.Sqrt(Dot(Sub(bEnd, a), Sub(bEnd, a)));
+        double len = g.Dimensions.TryGetValue("physicalLength", out double pl) ? pl : sysLen - offStart - offEnd;
+        double[] start = new[] { a[0] + dir[0] * offStart, a[1] + dir[1] * offStart, a[2] + dir[2] * offStart };
+        int pos = w.Add("IfcAxis2Placement3D", Ref(w.Add("IfcCartesianPoint", Point(start[0] * s, start[1] * s, start[2] * s))),
+            Ref(w.Add("IfcDirection", Point(dir))), Ref(w.Add("IfcDirection", Point(refX))));
+        Note(r, "beam: recortes das pontas aplicados só como encurtamento reto (cortes inclinados e features não modelados).");
+        return w.Add("IfcExtrudedAreaSolid", Ref(prof), Ref(pos), Ref(w.Add("IfcDirection", Point(0, 0, 1))), Real(len * s));
     }
 
     private static double? Dim(NeutralElement e, string name, double? k) =>

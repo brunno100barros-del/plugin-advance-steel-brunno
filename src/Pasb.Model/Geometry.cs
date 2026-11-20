@@ -64,8 +64,26 @@ public static class GeometryExtractor
         Desc(g, p, "Beam.ProfSectionName", "profileName");
         Num(g, p, "Beam.SysLength", "systemLength");
         Num(g, p, "Beam.GetLength", "physicalLength");
-        g.Limitations.Add("Seção transversal sem dimensões: ProfileType ainda não serializado; corpo sólido indisponível.");
-        g.Limitations.Add("Pontos inicial/final são do eixo de sistema; recortes nas pontas (GetLengthOffset) não aplicados.");
+
+        // Recortes nas pontas (GetLengthOffset): comprimento físico = sistema − início − fim (Teste 3: 1500 − 2×34,5 = 1431).
+        if (p.TryGetValue("Beam.GetLengthOffset", out NeutralProperty? lo) && lo.RawValue is JsonObject loj)
+        {
+            if (TryNum(loj["dStart"], out double ds)) g.Dimensions["offsetStart"] = ds;
+            if (TryNum(loj["dEnd"], out double de)) g.Dimensions["offsetEnd"] = de;
+            g.SourceKeys.Add(lo.Key);
+        }
+
+        // Seção: ProfileType serializado pelo diagnóstico 0.2.3 (propriedades do catálogo, ex.: H, B, Tw, Tf, R1, R2).
+        if (p.TryGetValue("Beam.GetProfType", out NeutralProperty? pt) && pt.RawValue is JsonObject ptj && ptj["properties"] is JsonObject props)
+        {
+            if (props["Type"] is JsonObject t && t["name"] is JsonValue tn && tn.TryGetValue(out string? shape) && shape is not null)
+                g.Descriptors["sectionShape"] = shape;
+            foreach (string k in new[] { "H", "B", "Tw", "Tf", "R1", "R2" })
+                if (TryNum(props[k], out double d)) g.Dimensions["section." + k] = d;
+            g.SourceKeys.Add(pt.Key);
+        }
+        if (!g.Dimensions.ContainsKey("section.H"))
+            g.Limitations.Add("Seção sem dimensões (perfil composto ou tipo não serializado): corpo sólido indisponível.");
         return g;
     }
 
