@@ -40,6 +40,8 @@ As saídas geradas ficam fora do controle de versão até decidirmos se devem se
 
 ## 3. Diagnóstico de modelo (dentro do CAD)
 
+> Projeto detalhado (comandos, fluxo, métodos aprovados, formato de saída, carregamento e protocolo de teste) em [DIAGNOSTIC-DESIGN.md](DIAGNOSTIC-DESIGN.md).
+
 ### Requisitos
 1. **Somente leitura.** Nenhuma escrita no modelo, nenhuma transação de modificação, nenhum comando de numeração.
 2. **Sem execução de código arbitrário.** O comando tem lógica fixa; não aceita scripts nem trechos de C#.
