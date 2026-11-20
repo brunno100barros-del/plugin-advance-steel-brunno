@@ -18,6 +18,7 @@ public static class ToolCatalog
     public const string ReadModel = "pasb_read_model";
     public const string GetObject = "pasb_get_object";
     public const string ExportIfc = "pasb_export_ifc";
+    public const string MaterialList = "pasb_material_list";
 
     public static readonly IReadOnlyList<ToolDef> All = new[]
     {
@@ -40,6 +41,11 @@ public static class ToolCatalog
             {
                 ["handle"] = new JsonObject { ["type"] = "string", ["description"] = "Handle do objeto, por exemplo \"2F1\"." },
             }, "handle"), true),
+        new ToolDef(MaterialList, "Lista de material",
+            "Lê o modelo (somente leitura) e devolve a lista de material agrupada: perfis (comprimento de corte), chapas e parafusos, " +
+            "com quantidade, peso e área de pintura. Vigas compostas não são somadas (são formadas pelas barras simples). " +
+            "Para inserir a tabela no desenho, o usuário usa o botão PASB > Lista de material.",
+            Schema(new JsonObject()), true),
         new ToolDef(ExportIfc, "Exportar IFC4",
             "Exporta o modelo inteiro para IFC4 com o exportador próprio do PASB (não usa o exportador da Autodesk). Lê o modelo sem alterá-lo " +
             "e grava só o arquivo .ifc e o relatório .report.json. Campos omitidos usam a última configuração da janela 'Exportar IFC'.",

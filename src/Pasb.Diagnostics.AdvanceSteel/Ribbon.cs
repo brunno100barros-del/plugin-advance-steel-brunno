@@ -54,6 +54,8 @@ internal static class PasbRibbon
         var tab = new RibbonTab { Title = "PASB", Id = TabId };
         tab.Panels.Add(Panel("IFC", Large("Exportar\nIFC", "PASB_EXPORTAR_IFC", "IFC", Color.FromRgb(0, 122, 204),
             "Exporta o modelo para IFC4 georreferenciado, com todas as propriedades do Advance Steel.")));
+        tab.Panels.Add(Panel("Listas", Large("Lista de\nmaterial", "PASB_LISTA_MATERIAL", "LM", Color.FromRgb(200, 120, 20),
+            "Lê o modelo (sem alterá-lo) e insere no desenho uma tabela com perfis, chapas e parafusos: comprimento, quantidade, peso e pintura.")));
         tab.Panels.Add(Panel("Diagnóstico",
             Large("Diagnóstico\nseleção", "PASB_DIAG_SEL", "SEL", Color.FromRgb(90, 90, 96), "Lê os objetos selecionados (somente leitura) e grava o resultado em Documentos\\PASB-Diagnostics."),
             Large("Diagnóstico\nmodelo", "PASB_DIAG_ALL", "ALL", Color.FromRgb(90, 90, 96), "Lê todos os objetos do modelo (somente leitura).")));

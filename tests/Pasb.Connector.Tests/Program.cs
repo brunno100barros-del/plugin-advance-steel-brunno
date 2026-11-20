@@ -132,6 +132,34 @@ internal static class Program
             True(refused && File.ReadAllText(bad) == "{ quebrado", "JSON inválido: não altera");
         });
 
+        Run("lista de material: agrupa barras, ignora compostas, chapas e parafusos", () =>
+        {
+            static string Beam(string h, string cls, double len, double grams, double paintMm2) =>
+                "{\"handle\":\"" + h + "\",\"clrType\":\"A." + cls + "\",\"inheritance\":[\"" + cls + "\",\"Beam\",\"AtomicElement\",\"FilerObject\"],\"properties\":[" +
+                "{\"technicalName\":\"ProfSectionName\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":\"U100\"}," +
+                "{\"technicalName\":\"Material\",\"declaringType\":\"AtomicElement\",\"status\":\"Read\",\"rawValue\":\"S235JRG2\"}," +
+                "{\"technicalName\":\"GetLength\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":" + len.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetWeight\",\"declaringType\":\"Beam\",\"argument\":\"1\",\"status\":\"Read\",\"rawValue\":" + grams.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetPaintArea\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":" + paintMm2.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}]}";
+            const string plate = """{"handle":"P1","clrType":"A.Plate","inheritance":["Plate","PlateBase","AtomicElement","FilerObject"],"properties":[{"technicalName":"Thickness","declaringType":"PlateBase","status":"Read","rawValue":12.5},{"technicalName":"Length","declaringType":"PlateBase","status":"Read","rawValue":200},{"technicalName":"Width","declaringType":"PlateBase","status":"Read","rawValue":300},{"technicalName":"GetWeight","declaringType":"PlateBase","status":"Read","rawValue":5887.5},{"technicalName":"Material","declaringType":"AtomicElement","status":"Read","rawValue":"S275"}]}""";
+            const string bolts = """{"handle":"B1","clrType":"A.FinitRectScrewBoltPattern","inheritance":["FinitRectScrewBoltPattern","ScrewBoltPattern","BoltPattern","AtomicElement","FilerObject"],"properties":[{"technicalName":"ScrewDiameter","declaringType":"ScrewBoltPattern","status":"Read","rawValue":16},{"technicalName":"ScrewLength","declaringType":"ScrewBoltPattern","status":"Read","rawValue":50},{"technicalName":"GetMidpoints","declaringType":"BoltPattern","status":"Read","rawValue":[[0,0,0],[1,0,0],[2,0,0],[3,0,0]]}]}""";
+            Extraction x = DiagnosticImporter.Import(Run_, new[]
+            {
+                Beam("51C", "StraightBeam", 1084.4985857864378, 11495.685, 403400), Beam("524", "StraightBeam", 1084.4985857864378, 11495.685, 403400),
+                Beam("528", "StraightBeam", 1669, 17691.4, 620900), Beam("4CC", "CompoundStraightBeam", 1084.5, 21730, 762600), plate, bolts,
+            });
+            MaterialListResult m = MaterialList.Build(x);
+            True(m.Rows.Count == 4, "4 linhas: " + m.Rows.Count);
+            True(m.Rows[0].Kind == "Perfil" && m.Rows[0].LengthMm == 1669 && m.Rows[1].Quantity == 2 && m.Rows[1].LengthMm == 1084.5, "perfis agrupados, maior primeiro");
+            True(Math.Abs(m.Rows[1].TotalKg!.Value - 22.99) < 0.01 && Math.Abs(m.Rows[1].TotalPaintM2!.Value - 0.8068) < 1e-4, "peso e pintura do grupo");
+            True(m.Rows[2].Description == "Chapa #12,50 300x200" && Math.Abs(m.Rows[2].UnitKg!.Value - 5.8875) < 1e-9, "chapa: " + m.Rows[2].Description);
+            True(m.Rows[3].Description == "M16x50" && m.Rows[3].Quantity == 4, "parafusos: " + m.Rows[3].Description);
+            True(m.ExcludedCompounds.SequenceEqual(new[] { "4CC" }) && m.Notes[0].Contains("composta"), "composta fora da soma");
+            True(Math.Abs(m.TotalKg - (11.495685 * 2 + 17.6914 + 5.8875)) < 1e-6 && m.TotalBeamLengthMm == 1084.5 * 2 + 1669, "totais");
+            JsonObject j = MaterialList.ToJson(m);
+            True(j["rows"]!.AsArray().Count == 4 && j["excludedCompoundBeams"]![0]!.GetValue<string>() == "4CC", "json");
+        });
+
         // ------------------------------------------------------------------ ponte local
         await RunAsync("ponte: ida e volta, erro do manipulador e arquivo de descoberta", async () =>
         {

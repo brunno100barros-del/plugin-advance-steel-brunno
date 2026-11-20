@@ -209,6 +209,13 @@ public sealed class AiConnector
                 var (dir, safe) = Read(ed, "PASB_IA_LER_OBJETO", () => (ids, 0));
                 return ConnectorLogic.DescribeObject(Import(dir, doc), h, safe);
             }
+            case ToolCatalog.MaterialList:
+            {
+                var (dir, safe) = Read(ed, "PASB_IA_LISTA_MATERIAL", AllModel);
+                JsonObject r = Pasb.Connector.MaterialList.ToJson(Pasb.Connector.MaterialList.Build(Import(dir, doc)));
+                r["modelUnchanged"] = safe; r["diagnosticFolder"] = dir;
+                return r;
+            }
             case ToolCatalog.ExportIfc:
             {
                 // Valida tudo antes de ler o modelo; a configuração da janela não é alterada.

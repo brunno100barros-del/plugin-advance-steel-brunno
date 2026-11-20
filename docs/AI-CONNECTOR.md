@@ -27,6 +27,7 @@ Claude Code ──stdio (JSON-RPC 2.0 / MCP)──► Pasb.Mcp.exe ──TCP 127
 | `pasb_status` | Versão do plugin, desenho ativo, unidade | Não |
 | `pasb_read_model` | Lê todos os objetos; devolve contagens por classe e categoria e uma lista (handle, classe, categoria, perfil, material...) | Não |
 | `pasb_get_object` | Todas as propriedades de um objeto pelo handle, com valor bruto, valor normalizado (SI) e situação de leitura, mais a geometria | Não |
+| `pasb_material_list` | Lista de material agrupada (perfis por comprimento de corte, chapas, parafusos) com peso e pintura; vigas compostas não somadas | Não |
 | `pasb_export_ifc` | Exporta o modelo inteiro para IFC4 com georreferência opcional (SIRGAS/UTM ou X,Y,Z; unidade m ou mm) | Só grava o `.ifc` e o `.report.json` |
 
 - O plugin **recusa** qualquer método fora da lista, e o servidor MCP também.
