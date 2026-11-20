@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Servidor MCP próprio do PASB (docs/AI-CONNECTOR.md): JSON-RPC 2.0 por stdin/stdout, sem bibliotecas externas.
+    O assistente de IA inicia este programa; ele repassa cada ferramenta à ponte local do plugin.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pasb.Mcp</RootNamespace>
+    <AssemblyName>Pasb.Mcp</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pasb.Bridge\Pasb.Bridge.csproj" />
+  </ItemGroup>
+
+</Project>

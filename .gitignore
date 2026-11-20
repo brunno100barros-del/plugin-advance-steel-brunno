@@ -1,0 +1,11 @@
+# Build .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Bundle montado localmente (gerado por bundle/Build-Bundle.ps1)
+artifacts/
+
+# Saídas geradas a partir de arquivos da Autodesk (não versionar sem decisão explícita)
+inventory-output/

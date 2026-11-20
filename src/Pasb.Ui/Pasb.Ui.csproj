@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Janela de exportação IFC (Windows Forms). Sem referências Autodesk: testável fora do Advance Steel. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Pasb.Ui</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pasb.Georeferencing\Pasb.Georeferencing.csproj" />
+    <ProjectReference Include="..\Pasb.IfcExport\Pasb.IfcExport.csproj" />
+    <ProjectReference Include="..\Pasb.IfcImport.Model\Pasb.IfcImport.Model.csproj" />
+  </ItemGroup>
+
+</Project>

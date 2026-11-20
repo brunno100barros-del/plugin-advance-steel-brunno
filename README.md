@@ -21,6 +21,10 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 
 ---
 
+## ⬇️ Instalar
+
+Baixe o pacote pronto em [`release/`](release/) e siga o passo a passo em **[INSTALACAO.md](INSTALACAO.md)**. Não precisa compilar nem de administrador.
+
 ## ✨ Visão geral
 
 Exportar um modelo de estrutura metálica para IFC costuma significar escolher entre duas perdas: **dados** (propriedades que somem no caminho) ou **posição** (o modelo chega na origem e precisa ser reposicionado à mão). Este projeto existe para eliminar as duas.
@@ -31,6 +35,10 @@ Exportar um modelo de estrutura metálica para IFC costuma significar escolher e
 | 🧩 | **Modelo neutro** | Camada intermediária independente do CAD, do protocolo e da biblioteca IFC — testável sem abrir o Advance Steel |
 | 🗂️ | **Preservação integral** | Todas as propriedades acessíveis — gerais, herdadas, específicas e User Attributes — sem whitelist fechada |
 | 🌎 | **Georreferenciamento real** | `IfcProjectedCRS` + `IfcMapConversion` a partir de um ponto de controle e do ângulo com o Norte |
+| 🤖 | **Conector IA** | Um assistente de IA (Claude Code) lê o modelo e exporta IFC pelo próprio plugin, só por leitura — [docs/AI-CONNECTOR.md](docs/AI-CONNECTOR.md) |
+| 👁️ | **Identidade Coordix** | Janelas e ícones da aba com a identidade visual Coordix · BIMOFFICE (paleta cobre/ink, IBM Plex quando instalada, símbolo do olho) |
+| 🔢 | **Numeração itemizada** | Peças iguais recebem a mesma marca (vigas por perfil, chapas por espessura, parafusos por Ø × comprimento), com prévia e filtros ([docs/NUMBERING.md](docs/NUMBERING.md)) |
+| 📥 | **Importação de IFC** | Qualquer IFC como sólidos ou malhas, separado por nível com cor por nível ([docs/IFC-IMPORT.md](docs/IFC-IMPORT.md)) |
 | 📦 | **Exportador IFC4 próprio** | Não depende do exportador nativo; cada exportação gera um relatório de cobertura e limitações |
 
 ## 🧭 Arquitetura
@@ -61,7 +69,7 @@ flowchart TD
 | Vigas / perfis | `IfcBeam` |
 | Chapas | `IfcPlate` |
 | Parafusos e chumbadores | `IfcMechanicalFastener` |
-| Soldas | `IfcWeld` |
+| Soldas | `IfcFastener` (WELD); o IFC4 não tem `IfcWeld` |
 | Peças especiais | tipo específico ou `IfcBuildingElementProxy` |
 
 Propriedades sem equivalente IFC padrão vão para **Property Sets customizados**, preservando nome técnico, valor, tipo, unidade e proveniência. Veja [IFC4-MAPPING.md](docs/IFC4-MAPPING.md).
@@ -71,20 +79,24 @@ Propriedades sem equivalente IFC padrão vão para **Property Sets customizados*
 | Etapa | Descrição | Status |
 |:-:|---|:-:|
 | 1 | Fundação do projeto e especificações | ✅ Concluída |
-| 2 | Integração com Advance Steel + MCP | 🟡 Revisão estática feita, validação local pendente |
-| 3 | Modelo neutro e preservação integral | 🟡 Contrato definido, implementação pendente |
-| 4 | Georreferenciamento SIRGAS 2000 / UTM | ⚪ Planejada |
-| 5 | Exportador IFC4 | ⚪ Planejada |
+| 2 | Integração com Advance Steel + inventário | 🟢 Diagnóstico próprio validado em vigas, ligações, chapas, parafusos e soldas; outras categorias pendentes |
+| 3 | Modelo neutro e preservação integral | 🟢 v1 implementada (propriedades + geometria analítica) |
+| 4 | Georreferenciamento (SIRGAS 2000 / UTM ou X,Y,Z + rotação) | 🟢 v1 implementada e testada; validação em visualizador pendente |
+| 5 | Exportador IFC4 | 🟡 v1 gerando IFC dos modelos de teste; validação em visualizador e corpo das vigas pendentes |
 
 Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > [!NOTE]
-> O projeto está em fase de especificação. Ainda não há código executável: nada é dado como "pronto" antes de ser validado em um modelo real do Advance Steel 2027.
+> O projeto já tem código executável (diagnóstico, modelo neutro, georreferenciamento e exportador IFC4 v1). Nada é dado como "pronto" antes de ser validado em modelo real do Advance Steel 2027 e em visualizador IFC independente. Registro dos testes: [docs/DIAGNOSTIC-TEST-LOG.md](docs/DIAGNOSTIC-TEST-LOG.md).
 
 ## 📚 Documentação
 
 | Documento | Conteúdo |
 |---|---|
+| [docs/NUMBERING.md](docs/NUMBERING.md) | Numeração itemizada: regras, campos, filtros, segurança |
+| [docs/IFC-IMPORT.md](docs/IFC-IMPORT.md) | Importação de IFC: níveis, cores, layers, blocos, xBIM |
+| [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) | Licenças de terceiros (xBIM, OpenCascade) |
+| [INSTALACAO.md](INSTALACAO.md) | Como instalar o plugin em qualquer computador (pacote pronto) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Módulos, fluxo de dados e responsabilidades |
 | [MCP-INTEGRATION.md](MCP-INTEGRATION.md) | Diretrizes de integração com o AdvancedSteelMCP |
 | [MCP-REVIEW.md](MCP-REVIEW.md) | Auditoria do código-fonte do MCP |
@@ -94,6 +106,7 @@ Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADM
 | [docs/IFC4-MAPPING.md](docs/IFC4-MAPPING.md) | Matriz de mapeamento para IFC4 |
 | [IFC-EXPORTER.md](IFC-EXPORTER.md) | Especificação do exportador IFC |
 | [GEOREFERENCING.md](GEOREFERENCING.md) | Especificação do georreferenciamento |
+| [docs/AI-CONNECTOR.md](docs/AI-CONNECTOR.md) | Conector IA: ponte local, servidor MCP próprio, ferramentas e instalação |
 | [decisions/](decisions/) | Registros de decisões de arquitetura (ADRs) |
 
 ## 🙏 Créditos

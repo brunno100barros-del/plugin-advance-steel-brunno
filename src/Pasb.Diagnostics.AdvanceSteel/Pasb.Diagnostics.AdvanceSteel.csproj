@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Add-in de diagnóstico somente leitura para o Advance Steel 2027.
+    Único projeto com referências à Autodesk (ARCHITECTURE.md).
+    Referências conforme o SDK (Samples/Projects/ASDotNetSample/ASDotNetTest.csproj) e,
+    para o carregamento por bundle do AutoCAD, accoremgd/acdbmgd/acmgd.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Pasb.Diagnostics.AdvanceSteel</RootNamespace>
+    <AssemblyName>Pasb.Diagnostics.AdvanceSteel</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <!-- Avisos de arquitetura e de plataforma vindos das DLLs da Autodesk. -->
+    <NoWarn>$(NoWarn);CA1416;MSB3270;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pasb.Diagnostics.Core\Pasb.Diagnostics.Core.csproj" />
+    <ProjectReference Include="..\Pasb.Model\Pasb.Model.csproj" />
+    <ProjectReference Include="..\Pasb.Georeferencing\Pasb.Georeferencing.csproj" />
+    <ProjectReference Include="..\Pasb.IfcExport\Pasb.IfcExport.csproj" />
+    <ProjectReference Include="..\Pasb.Ui\Pasb.Ui.csproj" />
+    <ProjectReference Include="..\Pasb.Bridge\Pasb.Bridge.csproj" />
+    <ProjectReference Include="..\Pasb.Connector\Pasb.Connector.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="accoremgd"><HintPath>$(AcadDir)\accoremgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="acdbmgd"><HintPath>$(AcadDir)\acdbmgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="acmgd"><HintPath>$(AcadDir)\acmgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AdWindows"><HintPath>$(AcadDir)\AdWindows.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASMgd"><HintPath>$(AdvsDir)\ASMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASCADLinkMgd"><HintPath>$(AdvsDir)\ASCADLinkMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASGeometryMgd"><HintPath>$(AdvsDir)\ASGeometryMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASObjectsMgd"><HintPath>$(AdvsDir)\ASObjectsMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASModelerMgd"><HintPath>$(AdvsDir)\ASModelerMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASProfilesMgd"><HintPath>$(AdvsDir)\ASProfilesMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASNetRuntime"><HintPath>$(AdvsDir)\ASNetRuntime.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+
+</Project>
