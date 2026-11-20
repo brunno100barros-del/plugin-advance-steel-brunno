@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pasb.Diagnostics.Core/Pasb.Diagnostics.Core.csproj" />
+    <Project Path="src/Pasb.Diagnostics.AdvanceSteel/Pasb.Diagnostics.AdvanceSteel.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/Pasb.Model/Pasb.Model.csproj" />
+    <Project Path="src/Pasb.Georeferencing/Pasb.Georeferencing.csproj" />
+    <Project Path="src/Pasb.IfcExport/Pasb.IfcExport.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pasb.Diagnostics.Core.Tests/Pasb.Diagnostics.Core.Tests.csproj" />
+    <Project Path="tests/Pasb.Model.Tests/Pasb.Model.Tests.csproj" />
+    <Project Path="tests/Pasb.Georeferencing.Tests/Pasb.Georeferencing.Tests.csproj" />
+    <Project Path="tests/Pasb.IfcExport.Tests/Pasb.IfcExport.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/ApiInventory/ApiInventory.csproj" />
+    <Project Path="tools/ToNeutral/ToNeutral.csproj" />
+    <Project Path="tools/ToIfc/ToIfc.csproj" />
+  </Folder>
+</Solution>
