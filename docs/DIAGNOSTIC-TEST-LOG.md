@@ -121,5 +121,20 @@ Passar a **transação com escrita permitida e descarte**: `DocumentAccess(doc, 
 
 Versão 0.2.0: `ASId`, `getPrimaryJoint` e `AssemblyUsedForNumbering` voltam a ser lidos nesse modo; continuam excluídos se o modo somente leitura for reativado.
 
+## Teste 6 — 2026-11-20 — versão 0.2.0 (escrita com descarte) — `Portal.dwg` inteiro
+
+**Resultado: FALHA no mesmo ponto do Teste 4. O modelo não foi alterado.**
+
+### Evidência
+- `trace.log`: `DocumentAccess aberto (modo write-discarded)`; ligação `305`: identidade (incluindo `ASId`, agora lido sem queda neste objeto), todos os getters e `getAttributeStatus` concluídos; última linha `UserAutoConstructionObject.getPrimaryJoint`.
+- `Portal-copia.dwg`: mesmo SHA-256 do original e data de 20/05/2025 depois da queda.
+
+### Interpretação
+- `getPrimaryJoint()` derruba o AutoCAD **também com escrita permitida**. A causa não é só a transação somente leitura; o método não é seguro para este uso. Excluído em qualquer modo.
+- O `ASId` foi lido sem queda numa ligação, mas no Teste 2 a queda foi numa viga. Ainda não há evidência de que o modo com descarte resolva o caso da viga.
+
+### Correção aplicada (versão 0.2.1)
+`getPrimaryJoint` excluído em qualquer modo, registrado como `Unavailable`.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.
