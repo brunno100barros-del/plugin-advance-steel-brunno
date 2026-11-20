@@ -70,8 +70,14 @@ Cada exportação deverá gerar um relatório com contagem por categoria, elemen
 
 Checagens automáticas nos dois arquivos: ids sequenciais, nenhuma referência quebrada, parênteses balanceados e nenhum caractere fora de ASCII.
 
+### Validação em visualizador independente — Trimble Connect (2026-11-20)
+- `portal.ifc` e `teste-chapa.ifc` carregados sem erro no visualizador 3D do Trimble Connect.
+- Geometria: chapa extrudada e 4 cilindros de parafuso visíveis; vigas visíveis só como eixo (esperado).
+- Propriedades: Psets `AS_*` exibidos (por exemplo, na chapa C7, `Material = S235JRG2`, `Number Of Holes = 4`, `Main Part Number = 49`, `Preliminary Part Number = "indefinido"`). Viga: `Common Type = BEAM`, `Product Object Type = StraightBeam`, GlobalId IFC de 22 caracteres lido corretamente.
+- **Georreferenciamento não confirmado:** os dois modelos, com coordenadas de destino muito diferentes (modo A em E≈500.000/N≈7.400.000; modo B em X≈1000/Y≈2000), apareceram lado a lado. O visualizador não aplicou `IfcMapConversion` nessa visualização, ou alinhou os modelos pela origem local. Falta validar a posição em outro visualizador ou com uma configuração de georreferenciamento do Trimble.
+
 ### Não validado / pendente
-- **Ainda não aberto em visualizador IFC independente** (próximo passo, com o desenvolvedor).
+- Posição georreferenciada em visualizador (ver acima).
 - Corpo das vigas (dimensões da seção: diagnóstico 0.2.3 serializa `ProfileType`, ainda não executado), furos e recortes das chapas, `Portioning` das chapas, trajetória das soldas, cabeça e porca dos parafusos.
 - Comparação automática propriedade a propriedade entre o IFC e a origem (IFC-EXPORTER.md, critérios).
 
