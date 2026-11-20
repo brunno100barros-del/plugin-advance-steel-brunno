@@ -18,7 +18,16 @@ internal static class ObjectReader
     /// Getters excluídos da leitura automática, por custo ou efeito colateral comprovado.
     /// Começa vazia de propósito; cada inclusão exige evidência registrada em docs/.
     /// </summary>
-    private static readonly HashSet<string> ExcludedGetters = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> ExcludedGetters = new(StringComparer.Ordinal)
+    {
+        // Teste 2 (docs/DIAGNOSTIC-TEST-LOG.md): ler ASId de um StraightBeam dentro de transação somente leitura
+        // derrubou o AutoCAD com eNotOpenForWrite (0xE0000001). Indício de que o ID é criado sob demanda.
+        "FilerObject.ASId",
+    };
+
+    /// <summary>Motivo registrado no JSON para cada getter excluído.</summary>
+    private const string ExclusionReason =
+        "Excluído pela lista revisada: a leitura derrubou o AutoCAD (eNotOpenForWrite) no Teste 2; ver docs/DIAGNOSTIC-TEST-LOG.md.";
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> GetterCache = new();
 
@@ -36,8 +45,8 @@ internal static class ObjectReader
         };
         trace("identidade: Handle");
         TryHeader(header, "handle", () => JsonValue.Create(o.Handle));
-        trace("identidade: ASId");
-        TryHeader(header, "asId", () => JsonValue.Create(o.ASId));
+        // ASId não é lido: ver ExcludedGetters.
+        header["asIdExcluded"] = ExclusionReason;
         trace("identidade: GetUniqueId");
         TryHeader(header, "uniqueId", () => JsonValue.Create(o.GetUniqueId().ToString("D")));
         trace("identidade: Type");
@@ -54,7 +63,7 @@ internal static class ObjectReader
             }
             if (ExcludedGetters.Contains(declaring + "." + p.Name))
             {
-                b.Unavailable(p.Name, declaring, ReadSource.Getter, p.PropertyType, "Excluído pela lista revisada.");
+                b.Unavailable(p.Name, declaring, ReadSource.Getter, p.PropertyType, ExclusionReason);
                 continue;
             }
             PropertyInfo prop = p;

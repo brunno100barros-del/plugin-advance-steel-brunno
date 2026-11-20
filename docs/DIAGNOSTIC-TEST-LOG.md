@@ -33,5 +33,36 @@ Cada execução real do add-in `PASB Diagnostics` é registrada aqui, com evidê
 ### Próximo passo
 Repetir o teste com a versão 0.1.1 numa cópia limpa do `Portal.dwg` e incluir a leitura identificada pelo `trace.log` na lista de exclusão, com esta evidência.
 
+## Teste 2 — 2026-11-20 — versão 0.1.1 — `Portal.dwg` (cópia, exemplo do SDK)
+
+**Resultado: FALHA, com causa identificada. O AutoCAD encerrou com `eNotOpenForWrite` ao ler `FilerObject.ASId`. O modelo não foi salvo.**
+
+### Contexto
+Entre o Teste 1 e o Teste 2, a instalação do Advance Steel 2027 deste computador parou de abrir ("Problem loading acadres.dll resource file"). A causa foi um registro inconsistente no instalador da Autodesk: o pacote principal "Advance Steel 2027 – Português (Brasil)" constava como instalado no `Install.db` sem estar instalado no Windows. Foi resolvido com desinstalação completa e reinstalação. Não tem relação com o add-in (o erro ocorria antes de qualquer plugin carregar, e o bundle estava removido).
+
+### O que foi feito
+Bundle 0.1.1 (com `trace.log`) reinstalado; cópia limpa de `Portal.dwg`; um único objeto selecionado (viga, handle `52A`, tipo `StraightBeam`); `PASB_DIAG_SEL`.
+
+### Evidência (`trace.log`)
+```text
+09:45:51.452 inicio PASB_DIAG_SEL versao 0.1.1+1523bcc... DBMOD=5
+09:45:51.455 DocumentAccess(readOnly) aberto
+09:45:51.459 ids: 1, ignorados: 0
+09:45:51.463 [1/1] Open handle=52A
+09:45:51.465 [1/1] tipo=StraightBeam
+09:45:51.468   52A identidade: Handle
+09:45:51.469   52A identidade: ASId
+```
+A linha seguinte (`GetUniqueId`) nunca foi gravada: a queda ocorreu durante a leitura de `ASId`. Mensagem do AutoCAD: `ERRO INTERNO: !dbobji.cpp@8753: eNotOpenForWrite`.
+
+`Portal-copia.dwg` manteve a data de modificação original (20/05/2025): não foi salvo.
+
+### Interpretação
+- `FilerObject.ASId` é uma propriedade de leitura na API, mas, para este objeto, provocou uma tentativa de escrita. Hipótese: o ID é criado sob demanda na primeira consulta. **Não confirmado.**
+- Consequência para o IFC: `ASId`, e possivelmente `GetUniqueId()`, podem não ser identificadores persistentes até que algo os crie. Não usar como chave de `IfcGlobalId` sem investigação específica.
+
+### Correção aplicada (versão 0.1.2)
+`FilerObject.ASId` entra na lista de exclusão (`ObjectReader.ExcludedGetters`), tanto na identidade quanto na leitura automática, com o motivo registrado no JSON.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.
