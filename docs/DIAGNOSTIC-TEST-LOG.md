@@ -89,5 +89,20 @@ A linha seguinte (`GetUniqueId`) nunca foi gravada: a queda ocorreu durante a le
 - Conferir os valores com a janela de propriedades do Advance Steel.
 - Serializar `ProfileType`.
 
+## Teste 4 — 2026-11-20 — versão 0.1.2 — `Portal.dwg` inteiro (`PASB_DIAG_ALL`)
+
+**Resultado: FALHA, com causa identificada. O AutoCAD caiu no primeiro objeto ao chamar `UserAutoConstructionObject.getPrimaryJoint`.**
+
+### Evidência (`trace.log`)
+- 26 objetos no modelo; o primeiro foi a ligação `305` (`UserAutoConstructionObject`).
+- Leituras concluídas antes da queda: todos os 38 getters da ligação (inclusive `InputObjects`, `CreatedObjects`, `Drivers`, `Drivens`, `ParameterSet`, `Rule`, `NSAModuleName`, `NSAModuleInternalName`, `NSAModuleStandard`, `PrimaryJointName`, `CheckStatus`, `ApprovalStatus`) e todos os `getAttributeStatus`.
+- Última linha: `305 UserAutoConstructionObject.getPrimaryJoint [method]`. Nenhum objeto chegou a ser gravado.
+
+### Interpretação
+`getPrimaryJoint()` provoca escrita no objeto, como o `ASId`. Os getters de leitura da ligação são seguros em transação somente leitura.
+
+### Correção aplicada (versão 0.1.3)
+`getPrimaryJoint` removido dos métodos aprovados e registrado como `Unavailable`, com o motivo, em cada ligação.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.
