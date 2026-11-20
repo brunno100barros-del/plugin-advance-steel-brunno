@@ -76,6 +76,15 @@ Checagens automáticas nos dois arquivos: ids sequenciais, nenhuma referência q
 - Propriedades: Psets `AS_*` exibidos (por exemplo, na chapa C7, `Material = S235JRG2`, `Number Of Holes = 4`, `Main Part Number = 49`, `Preliminary Part Number = "indefinido"`). Viga: `Common Type = BEAM`, `Product Object Type = StraightBeam`, GlobalId IFC de 22 caracteres lido corretamente.
 - **Georreferenciamento não confirmado:** os dois modelos, com coordenadas de destino muito diferentes (modo A em E≈500.000/N≈7.400.000; modo B em X≈1000/Y≈2000), apareceram lado a lado. O visualizador não aplicou `IfcMapConversion` nessa visualização, ou alinhou os modelos pela origem local. Falta validar a posição em outro visualizador ou com uma configuração de georreferenciamento do Trimble.
 
+### Corpo das vigas — validado (Teste 10, 2026-11-20)
+- Diagnóstico 0.2.3 serializou `ProfileTypeU` (H, B, Tw, Tf, R1, R2, E). Perfis compostos não têm dimensões.
+- Regras confirmadas com as caixas envolventes reais e com o desenvolvedor no Trimble Connect (`portal-v2.ifc` "igual ao Advance Steel"):
+  - o eixo do Advance Steel passa pelo centroide do U (E a partir das costas da alma); as mesas abrem no sentido do Y local; H segue o Z local;
+  - comprimento físico = comprimento do sistema − `dStart` − `dEnd` (offset negativo alonga);
+  - cortes de serra das mesas aplicados por planos (`IfcBooleanClippingResult`). A correspondência início/fim do corte se inverte em seção espelhada, e o ângulo efetivo é −ângulo no "Start" e +ângulo no "End";
+  - vigas compostas sem representação gráfica; a forma vem das componentes.
+- Pendente: ângulos de corte na alma (`webAngle`), recortes e furos em vigas, perfis I e outros tipos (só U validado).
+
 ### Não validado / pendente
 - Posição georreferenciada em visualizador (ver acima).
 - Corpo das vigas (dimensões da seção: diagnóstico 0.2.3 serializa `ProfileType`, ainda não executado), furos e recortes das chapas, `Portioning` das chapas, trajetória das soldas, cabeça e porca dos parafusos.
