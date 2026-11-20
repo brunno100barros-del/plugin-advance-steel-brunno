@@ -36,7 +36,15 @@ Uma linha "MCP" comprova que o membro existe na API, mas não que o valor retorn
 | Numeração | AtomicElement | Prefixos, ItemNumber, IsMainPart | propriedades | MCP | `Objects.cs:203-206` |
 | Numeração | AtomicElement | HolesUsedForNumbering | propriedade | API | XML `ASObjectsMgd` |
 | User Attributes | AtomicElement | Atributos 1 a 10 | `GetUserAttribute(i)` | MCP parcial | Só valores não vazios; exceções descartadas (`Objects.cs:343-357`). Índice a partir de 0 confirmado no Training Guide |
-| User Attributes | AtomicElement | Uso na numeração | `getUserAttributeUsedForNumbering` | INV | Só o nome encontrado no binário |
+| User Attributes | AtomicElement | Uso na numeração | `GetUserAttributeUsedForNumbering(int)` | API | Público (inventário de metadados). Quantidade e nomes dos atributos: INV, medir em execução |
+| Identificação | FilerObject | GUID do objeto | `GetUniqueId()` → `Guid` | API | Candidato a chave do `IfcGlobalId`; persistência a validar |
+| Identificação | FilerObject | ID interno | `ASId` (`long`) | API | Inventário de metadados |
+| Dados extras | FilerObject | XData | `getXData(string)` → `byte[]` | API | Exige o nome do registro |
+| Identificação | AtomicElement | Descrições de material e revestimento, peso específico | `MaterialDescription`, `CoatingDescription`, `SpecificGravity` | API | Inventário de metadados |
+| Numeração | AtomicElement | Números preliminares, SP/MP number, flags `*UsedForNumbering`, `*UsedForBOM`, `*UsedForCollisionCheck` | propriedades | API | Inventário de metadados |
+| Fabricação | AtomicElement | Furos, quantidade explícita, membro estrutural, desdobramento, peça anexada | `NumberOfHoles`, `ExplicitQuantity`, `StructuralMember`, `Unwind`, `UnwindStartFactor`, `IsAttachedPart` | API | Inventário de metadados |
+| Fabricação | AtomicElement | Nomes DSTV e externos, centro de gravidade, quantidade no modelo | `GetDSTVName`, `GetExternalNames`, `GetBalancepoint`, `GetQuantityInModel` | API | Métodos com parâmetros `out`; leitura a validar |
+| Ligação | AtomicElement | Ligação e objetos conectados | `GetConnection()`, `GetConnectedObjects`, `GetConnectedElements` | API | Inventário de metadados |
 | Geometria | AtomicElement | Volume | `Volume` | MCP | `Objects.cs:207` |
 | Geometria | ConstructionElement | Centro, extensões | `CenterPoint`, `GeomExtents` | MCP | `Objects.cs:236-241` |
 | Geometria | AtomicElement | Sólido (BRep) | `GetModeler`, `GetModelerBodyList` | API | XML `ASObjectsMgd`. `ExportToACIS(string)` grava arquivo em disco |
@@ -60,13 +68,14 @@ Uma linha "MCP" comprova que o membro existe na API, mas não que o valor retorn
 | Ligação | PassiveConstructionObject | Objetos de entrada e criados | `Drivers`, `Drivens` | MCP | `Objects.cs:226-228` |
 | Ligação | UserAutoConstructionObject | Nome da ligação | `PrimaryJointName`, `NSAModuleName` | MCP | `Objects.cs:229-230` |
 | Ligação | UserAutoConstructionObject | Módulo NSA, norma, aprovação, nome de execução, flags | propriedades | API | XML `ASObjectsMgd` |
-| Ligação | IJoint | InputObjects, CreatedObjects, DefaultAttributeStateAccessible | interface | INV | Documentado para criação (Joints NET.docx); leitura externa não comprovada |
-| Parâmetros da ligação | IFiler | Itens gravados pela regra | `readItem(nome)` | INV | Persistência interna da regra (Training Guide, `InField`/`OutField`) |
-| Parâmetros da ligação | (binário) | Parâmetros e sobrescritas | `GetJointParam`, `GetOvrdJointParam`, `getFilerData` | INV | Só nomes encontrados no binário |
+| Ligação | UserAutoConstructionObject (implementa IJoint) | Objetos de entrada e criados | `InputObjects`, `CreatedObjects` (somente get) | API | `UserAutoConstructionObject` implementa `IJoint` (inventário de metadados) |
+| Ligação | UserAutoConstructionObject | Status de verificação, ligação primária | `CheckStatus`, `getPrimaryJoint()`, `isPrimaryOrPartOfPrimaryJoint()` | API | Inventário de metadados |
+| Parâmetros da ligação | IJoint / IFiler | Todos os itens gravados pela regra | `Save()` → `IFiler`, depois `GetItems()` → `Dictionary<string, object>` | INV | Caminho candidato. Semântica de `Save()` e efeitos colaterais desconhecidos; testar só em cópia do DWG |
+| Parâmetros da ligação | (binário) | Parâmetros e sobrescritas | `GetJointParam`, `GetOvrdJointParam`, `getFilerData` | N/A | Não são membros públicos; não serão usados |
 | Concreto | Wall, Slab, FootingIsolated, ConcreteBeam | Tudo além de handle, tipo e layer | — | INV | O MCP só classifica (`Objects.cs:39, 54-55`) |
 | Eixos e pontos | Grid, UserDefinedPoint | Tudo além de handle, tipo e layer | — | INV | `Objects.cs:42-43` |
 | Descoberta | Todas | Membros públicos declarados | `advsteel_api_help` (reflexão em runtime) | MCP | `ScriptHandlers.cs:235-285`; só membros declarados no tipo, sem herdados |
-| Demais | Todas | Membros públicos herdados e específicos | leitura de metadados | INV | XML insuficiente; ver [DIAGNOSTIC-TOOL-PLAN.md](DIAGNOSTIC-TOOL-PLAN.md) |
+| Demais | Todas | Membros públicos herdados e específicos | leitura de metadados | API | 474 tipos e 5.548 membros catalogados por `tools/ApiInventory`; detalhamento por classe ainda a incorporar nesta matriz |
 
 ## 4. Perdas sistemáticas no MCP
 
@@ -77,6 +86,6 @@ Uma linha "MCP" comprova que o membro existe na API, mas não que o valor retorn
 
 ## 5. Próximos passos
 
-- Gerar o inventário completo das assemblies (ferramenta `tools/ApiInventory`, ver plano).
-- Reclassificar as linhas INV com base nesse inventário.
+- ~~Gerar o inventário completo das assemblies~~ feito com `tools/ApiInventory` em 2026-11-19 (ver [SDK-2027-FINDINGS.md](SDK-2027-FINDINGS.md), seção 7).
+- Incorporar à matriz os membros específicos de Beam, PlateBase, ScrewBoltPattern, AnchorPattern, WeldPattern e SpecialPart a partir do inventário.
 - Validar as linhas MCP e API em modelo real.

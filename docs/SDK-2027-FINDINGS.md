@@ -79,9 +79,64 @@ Busca textual no binário (não prova visibilidade pública nem assinatura):
 3. **IJoint:** usado na criação de ligações (`SetInputObjects`, `CreatedObjects`, `CreateJointTransfer`, `CreateRole`).
 4. **Atributos de objetos controlados por ligações:** desde o AS 2020 ficam acessíveis por padrão, salvo se a ligação definir `IJoint.DefaultAttributeStateAccessible = false` (Joints NET.docx e Training Guide).
 
-## 7. Pendências
+## 7. Inventário de metadados (ferramenta `tools/ApiInventory`)
 
-- Inventário completo de tipos, herança, propriedades e métodos públicos por leitura de metadados.
-- Confirmar se `IFiler`/`GetJointParam` permitem leitura externa dos parâmetros de uma ligação existente.
+Executado em 2026-11-19 sobre as 8 assemblies `AS*Mgd.dll` (31.0.260.0). A ferramenta lê só os metadados; nenhuma assembly foi carregada ou executada.
+
+Totais: 474 tipos públicos somando as 8 assemblies (473 nomes distintos: 263 classes, 125 enums, 53 structs, 18 interfaces, 14 delegates) e 5.548 membros públicos ou protegidos, dos quais só 536 aparecem no XML de documentação. `ASObjectsMgd.dll` concentra 265 tipos e 3.356 membros.
+
+### 7.1 Herança confirmada
+
+```text
+FilerObject
+└─ ConstructionElement
+   ├─ ActiveConstructionElement
+   │  ├─ AtomicElement
+   │  │  ├─ MainAlias
+   │  │  │  ├─ Beam ─ StraightBeam, PolyBeam, ...
+   │  │  │  └─ PlateBase ─ Plate, ...
+   │  │  ├─ BoltPattern ─ ScrewBoltPattern ─ AnchorPattern
+   │  │  ├─ WeldPattern
+   │  │  └─ SpecialPart
+   │  └─ FeatureObject
+   └─ PassiveConstructionObject
+      └─ AutoConstructionObject ─ UserAutoConstructionObject (implementa IJoint)
+```
+
+### 7.2 Membros declarados nas classes centrais
+
+Propriedades legíveis de instância (sem índice) e métodos declarados na própria classe, sem contar os herdados:
+
+| Classe | Propriedades legíveis | Métodos | No XML |
+|---|---|---|---|
+| FilerObject | 4 | 25 | 1 |
+| ConstructionElement | 12 | 23 | 0 |
+| AtomicElement | 38 | 36 | 6 |
+| MainAlias | 20 | 7 | 0 |
+| Beam | 17 | 38 | 0 |
+| PlateBase | 15 | 27 | 1 |
+| BoltPattern | 8 | 11 | 0 |
+| ScrewBoltPattern | 27 | 8 | 0 |
+| AnchorPattern | 23 | 11 | 0 |
+| WeldPattern | 17 | 19 | 0 |
+| SpecialPart | 8 | 7 | 0 |
+| PassiveConstructionObject | 8 | 7 | 0 |
+| UserAutoConstructionObject | 17 | 33 | 11 |
+
+Para comparação, o MCP lê cerca de 13 membros de `AtomicElement` (ver [API-MCP-COVERAGE-MATRIX.md](API-MCP-COVERAGE-MATRIX.md)).
+
+### 7.3 Achados relevantes
+
+1. **Ligações:** `UserAutoConstructionObject` implementa `IJoint`. Portanto `InputObjects` e `CreatedObjects` (somente leitura) existem em objetos de ligação do modelo, não apenas durante a criação.
+2. **Parâmetros de ligação (candidato):** `UserAutoConstructionObject.Save()` e `IJoint.Save()` retornam `IFiler`, e `IFiler.GetItems()` retorna `Dictionary<string, object>`. Pode ser o caminho para ler todos os parâmetros de uma ligação. **Não validado:** a semântica de `Save()` (efeitos colaterais, transação exigida) é desconhecida e precisa de teste controlado em cópia do DWG.
+3. **Identidade:** `FilerObject.GetUniqueId()` retorna `System.Guid`; `ConstructionElement.SetUniqueId(Guid)` também existe. É candidato a chave estável para o `IfcGlobalId`, a confirmar se persiste entre sessões e cópias.
+4. **XData:** `FilerObject.getXData(string)` retorna `byte[]`, mas exige conhecer o nome do registro.
+5. **User Attributes:** `GetUserAttribute(int)` e `GetUserAttributeUsedForNumbering(int)` são públicos. Não há membro público que informe a quantidade de atributos nem seus nomes; isso precisa ser medido em execução.
+6. **AtomicElement além do MCP:** `MaterialDescription`, `CoatingDescription`, `SpecificGravity`, `NumberOfHoles`, `ExplicitQuantity`, `StructuralMember`, `PreliminaryPartNumber`, `PreliminaryPartPrefix`, `PreliminaryPartPositionNumber`, `SinglePartNumber`, `MainPartNumber`, `IsAttachedPart`, `Unwind`, `UnwindStartFactor`, as flags `*UsedForNumbering`, `*UsedForBOM` e `*UsedForCollisionCheck`, e os métodos `GetBalancepoint`, `GetQuantityInModel`, `GetNumberingStatus`, `GetDSTVName`, `GetExternalNames`, `GetConnection`, `GetConnectedObjects`.
+7. **Nomes não públicos:** `GetJointParam`, `GetOvrdJointParam` e `getFilerData`, encontrados no binário, **não** aparecem entre os membros públicos. Não serão usados.
+
+## 8. Pendências
+
+- Confirmar se `IFiler`/`GetJointParam` permitem leitura externa dos parâmetros de uma ligação existente. Atualização: `GetJointParam` não é público; o caminho candidato é `Save()` + `GetItems()` (seção 7.3).
 - Confirmar quantos User Attributes existem em 2027 e como obter seus nomes.
 - Abrir o `COM API Reference Guide.doc` (formato .doc binário) e cruzar com a API .NET.

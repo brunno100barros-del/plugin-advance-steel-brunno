@@ -1,6 +1,6 @@
 # Plano das ferramentas de inventário e diagnóstico
 
-Status: planejamento. Nada descrito aqui foi implementado ou executado.
+Status: `tools/ApiInventory` implementado e executado em 2026-11-19 nas assemblies 31.0.260.0 (resultados em [SDK-2027-FINDINGS.md](SDK-2027-FINDINGS.md), seção 7). O diagnóstico de modelo continua apenas planejado.
 
 Data: 2026-11-19
 
