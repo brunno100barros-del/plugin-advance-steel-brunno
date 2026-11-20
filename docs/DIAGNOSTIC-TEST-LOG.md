@@ -165,5 +165,38 @@ Versão 0.2.0: `ASId`, `getPrimaryJoint` e `AssemblyUsedForNumbering` voltam a s
 ### Conclusão
 A combinação escrita permitida + descarte + lista aprovada sem métodos de escrita + verificação de `DBMOD` foi validada neste modelo: leu tudo o que existia sem alterar o arquivo.
 
+## Teste 8 — 2026-11-20 — versão 0.2.1 (escrita com descarte) — DWG de teste criado pelo desenvolvedor
+
+**Resultado: SUCESSO. Chapa, parafusos, solda e ligações lidos sem queda e sem alteração do arquivo.**
+
+### Modelo
+DWG criado pelo desenvolvedor para teste (sem dados de cliente): uma chapa com 4 furos, um grupo de 4 parafusos e um cordão de solda.
+
+### Execução
+- 15 objetos solicitados: 10 gravados, 5 falhas de abertura (`83`, `CA`, `CC`, `CE`, `CF`; `DatabaseManager.Open` retornou nulo), 0 falhas de leitura.
+- 903 leituras em 0,48 s: 813 `Read`, 82 `Empty`, 8 `Null`, **0 `ReadError`**.
+- Segurança: `DBMOD` 0 antes e 0 depois; `DiscardAllChanges` = ok; arquivo gravado às 10:17:32, diagnóstico às 10:17:50, sem gravação posterior depois de fechar sem salvar.
+
+### Cobertura por tipo
+| Tipo | Objetos | Leituras |
+|---|---|---|
+| `Plate` | 1 | 221 |
+| `FinitRectScrewBoltPattern` | 1 | 233 |
+| `WeldLine` | 1 | 183 |
+| `Connection` | 2 | 124 |
+| `ConnectionConstructionObject` | 2 | 130 |
+| `RuleParameterSet` | 2 | 8 |
+| `ConstructionFeatureRule` | 1 | 4 |
+
+### Achados
+1. **Peso em gramas também em chapas e parafusos.** Chapa 196 × 100 × 4,75 mm = 93.100 mm³ × 7,85e-06 kg/mm³ = 0,731 kg, e `GetWeight()` retornou 730,83. Parafusos: `GetWeight()` = 149,44 para 4 conjuntos M12×35 (cerca de 37 g cada).
+2. **Parafusos:** norma `14399-4`, classe `10.9`, Ø 12, comprimento 35, conjunto `Mu2S`, cabeça e porca Ø 23,91, comprimento de aperto 4,75, tolerância de furo 1, `Annotation` = `"Bohrbild"`, montagem `kOnSite`. `GetHoles` aponta para o objeto de furos `DB` (`ConnectionHolePlate`).
+3. **Solda:** `kTWeld`, espessura 4, comprimento 91,06, montagem `kInShop`. Para o lado inferior, `GetWeldType(kLower)` retornou o valor 0 (não definido no enum, ou seja, sem cordão inferior), mas `GetSeamThickness(kLower)` retornou 4. **A espessura inferior não deve ser usada quando o tipo inferior for 0.**
+4. **Ligações de chapa/parafuso/solda:** objetos `Connection` (`kWelded`, `kBolted`) e `ConnectionConstructionObject`, cujos `Drivers` apontam para a chapa e a `Connection`, e cujos `Drivens` apontam para os furos. Esses tipos não estavam na matriz por classe.
+5. Falhas de abertura recorrentes (9 objetos em dois modelos): tipo ainda não identificado.
+
+### Ainda não testado
+Chumbadores, peças especiais, vigas poligonais/curvas, chapas dobradas, grades, concreto e eixos.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.
