@@ -59,6 +59,25 @@ A zona UTM não será fixa. A aplicação deverá permitir informar a zona e val
 - Testes em limites de zona e hemisfério.
 - Abrir o IFC em visualizador independente e conferir posicionamento.
 
+## Implementação (v1, 2026-11-20)
+
+Código em `src/Pasb.Georeferencing` (matemática pura) e testes em `tests/Pasb.Georeferencing.Tests` (13/13).
+
+**Convenção adotada:**
+- Ponto de controle do modelo em unidades do desenho; coordenadas de destino em metros.
+- α = rotação em graus, **anti-horária positiva**, do eixo X do modelo até o eixo X (Leste) do destino.
+  - Quem tem o "azimute do Norte do modelo" (ângulo horário do Norte até o +Y do modelo) usa α = −azimute (`RotationFromModelNorthAzimuth`).
+- Fórmula: `E = E0 + k·(cos α·dx − sin α·dy)`, `N = N0 + k·(sin α·dx + cos α·dy)`, `H = H0 + k·dz`, com `d = ponto − ponto de controle` e `k` = fator de unidade (mm → 0,001). A inversa é exata.
+- `IfcMapConversion`: `Eastings/Northings/OrthogonalHeight` = origem do modelo no destino; `XAxisAbscissa = cos α`, `XAxisOrdinate = sin α`; `Scale = 1`, porque a geometria IFC é gravada em metros.
+
+**Testes cobertos:** ponto de controle exato com rotações de 0°, 90°, 180°, 37,5° e −12°; distâncias preservadas; elevação positiva, negativa e zero; ida e volta; `IfcMapConversion` reproduzindo a transformação; validação de zona, hemisfério e faixa de coordenadas; modo B.
+
+**Códigos EPSG SIRGAS 2000 / UTM:**
+- Sul: 17S–25S = 31977–31985. Confirmados em spatialreference.org: 31977 = 17S e 31982 = 22S; o restante segue a mesma sequência.
+- Norte: 11N–22N = 31965–31976. **Não confirmado**; conferir no registro EPSG antes de usar em Roraima ou Amapá.
+
+**Pendente:** testes em limites de zona; validação em visualizador IFC independente; forma final de declarar o CRS do modo B.
+
 ## Limitação de escopo
 
 IFC2x3 não possui o mesmo mecanismo nativo de georreferenciamento do IFC4. Qualquer suporte futuro deverá ter estratégia própria documentada, sem alegar equivalência.
