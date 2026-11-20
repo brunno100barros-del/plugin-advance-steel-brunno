@@ -29,6 +29,8 @@
     <ProjectReference Include="..\Pasb.Georeferencing\Pasb.Georeferencing.csproj" />
     <ProjectReference Include="..\Pasb.IfcExport\Pasb.IfcExport.csproj" />
     <ProjectReference Include="..\Pasb.Ui\Pasb.Ui.csproj" />
+    <ProjectReference Include="..\Pasb.Bridge\Pasb.Bridge.csproj" />
+    <ProjectReference Include="..\Pasb.Connector\Pasb.Connector.csproj" />
   </ItemGroup>
 
   <ItemGroup>

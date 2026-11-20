@@ -25,9 +25,15 @@ New-Item -ItemType Directory -Force (Join-Path $bundle 'Contents') | Out-Null
 
 Copy-Item (Join-Path $PSScriptRoot 'PASB-Diagnostics\PackageContents.xml') $bundle
 # Só as DLLs do projeto; nenhuma DLL da Autodesk vai para o bundle.
-foreach ($name in 'Pasb.Diagnostics.AdvanceSteel.dll', 'Pasb.Diagnostics.Core.dll', 'Pasb.Model.dll', 'Pasb.Georeferencing.dll', 'Pasb.IfcExport.dll', 'Pasb.Ui.dll', 'Pasb.Diagnostics.AdvanceSteel.runtimeconfig.json') {
+foreach ($name in 'Pasb.Diagnostics.AdvanceSteel.dll', 'Pasb.Diagnostics.Core.dll', 'Pasb.Model.dll', 'Pasb.Georeferencing.dll', 'Pasb.IfcExport.dll', 'Pasb.Ui.dll', 'Pasb.Bridge.dll', 'Pasb.Connector.dll', 'Pasb.Diagnostics.AdvanceSteel.runtimeconfig.json') {
     Copy-Item (Join-Path $binDir $name) (Join-Path $bundle 'Contents')
 }
+
+# Servidor MCP do Conector IA (programa separado, iniciado pelo assistente de IA): Contents\Mcp
+$mcpProject = Join-Path $root 'src\Pasb.Mcp\Pasb.Mcp.csproj'
+& dotnet publish $mcpProject -c $Configuration -nologo -o (Join-Path $bundle 'Contents\Mcp')
+if ($LASTEXITCODE -ne 0) { throw "Falha ao publicar o servidor MCP (código $LASTEXITCODE)." }
+Get-ChildItem (Join-Path $bundle 'Contents\Mcp') -Filter *.pdb | Remove-Item
 
 Write-Host "Bundle montado em: $bundle"
 Get-ChildItem $bundle -Recurse -File | ForEach-Object { Write-Host ('  ' + $_.FullName.Substring($bundle.Length + 1)) }

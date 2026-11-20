@@ -35,6 +35,7 @@ public sealed class ExportDialog : Form
     private readonly TextBox _base = Box(readOnly: true);
     private readonly Button _pick = Btn("Selecionar...");
     private readonly TextBox _tx = Box(), _ty = Box(), _tz = Box(), _angle = Box();
+    private readonly ComboBox _unit = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
     private readonly RadioButton _rot = Radio("Rotação (anti-horária, X do modelo → Leste)"), _azi = Radio("Azimute (horário, Norte → +Y do modelo)");
     private readonly TextBox _output = Box();
     private readonly Button _browse = Btn("...");
@@ -105,7 +106,9 @@ public sealed class ExportDialog : Form
         c3.Controls.Add(Caption("Ponto base no modelo (mm, coordenadas globais)"));
         _base.Width = 290;
         c3.Controls.Add(Line(_base, _pick));
-        c3.Controls.Add(Caption("Coordenadas reais do ponto base (metros)"));
+        _unit.Items.AddRange(new object[] { "Metros (m)", "Milímetros (mm)" });
+        StyleField(_unit);
+        c3.Controls.Add(Line(Caption("Coordenadas reais do ponto base, em"), _unit));
         _tx.Width = _ty.Width = _tz.Width = 105;
         c3.Controls.Add(Line(Caption("X / E"), _tx, Caption("Y / N"), _ty, Caption("Z"), _tz));
         c3.Controls.Add(Caption("Ângulo (graus)"));
@@ -155,6 +158,7 @@ public sealed class ExportDialog : Form
         _hemi.SelectedIndex = s.Hemisphere == Hemisphere.North ? 1 : 0;
         _crsName.Text = s.LocalCrsName;
         _base.Text = $"X: {ExportSettings.FormatNumber(s.BaseX, 3)}   Y: {ExportSettings.FormatNumber(s.BaseY, 3)}   Z: {ExportSettings.FormatNumber(s.BaseZ, 3)}";
+        _unit.SelectedIndex = s.TargetUnit == TargetUnit.Millimeters ? 1 : 0;
         _tx.Text = ExportSettings.FormatNumber(s.TargetX); _ty.Text = ExportSettings.FormatNumber(s.TargetY); _tz.Text = ExportSettings.FormatNumber(s.TargetZ);
         (s.AngleMode == AngleInput.Azimuth ? _azi : _rot).Checked = true;
         _angle.Text = ExportSettings.FormatNumber(s.AngleDegrees, 8);
@@ -174,6 +178,7 @@ public sealed class ExportDialog : Form
         s.UtmZone = (int)_zone.Value;
         s.Hemisphere = _hemi.SelectedIndex == 1 ? Hemisphere.North : Hemisphere.South;
         s.LocalCrsName = _crsName.Text.Trim();
+        s.TargetUnit = _unit.SelectedIndex == 1 ? TargetUnit.Millimeters : TargetUnit.Meters;
         Num(_tx, "X / E", v => s.TargetX = v, errors);
         Num(_ty, "Y / N", v => s.TargetY = v, errors);
         Num(_tz, "Z / Cota", v => s.TargetZ = v, errors);
@@ -198,7 +203,7 @@ public sealed class ExportDialog : Form
         bool geo = !_geoNone.Checked;
         _zone.Enabled = _hemi.Enabled = _geoSirgas.Checked;
         _crsName.Enabled = _geoLocal.Checked;
-        foreach (Control c in new Control[] { _pick, _tx, _ty, _tz, _angle, _rot, _azi }) c.Enabled = geo;
+        foreach (Control c in new Control[] { _pick, _unit, _tx, _ty, _tz, _angle, _rot, _azi }) c.Enabled = geo;
     }
 
     private void Browse()

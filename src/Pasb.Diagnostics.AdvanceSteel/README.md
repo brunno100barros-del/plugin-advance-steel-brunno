@@ -12,9 +12,11 @@ Diagnóstico **somente leitura** das propriedades dos objetos do Advance Steel. 
 | `PASB_DIAG_SEL` | Diagnostica os objetos selecionados |
 | `PASB_DIAG_ALL` | Diagnostica todos os objetos do modelo |
 | `PASB_EXPORTAR_IFC` | Exporta o modelo inteiro para IFC4 georreferenciado (versão 0.3.0) |
+| `PASB_CONECTOR_IA` | Liga/desliga o Conector IA (versão 0.5.0): ver [docs/AI-CONNECTOR.md](../../docs/AI-CONNECTOR.md) |
+| `PASB_IA_EXECUTAR` | Interno: executa os pedidos do Conector IA (não digitar) |
 
 ### Aba PASB (versão 0.4.0)
-Ao abrir o Advance Steel 2027, aparece a aba **PASB** na faixa de opções com os botões **Exportar IFC**, **Diagnóstico seleção**, **Diagnóstico modelo** e **Sobre**. Por isso o plugin carrega na inicialização. Ao abrir, ele só cria a aba e não lê o desenho.
+Ao abrir o Advance Steel 2027, aparece a aba **PASB** na faixa de opções com os botões **Exportar IFC**, **Diagnóstico seleção**, **Diagnóstico modelo**, **Conector IA** (desde a 0.5.0) e **Sobre**. Por isso o plugin carrega na inicialização. Ao abrir, ele só cria a aba e não lê o desenho.
 
 ### `PASB_EXPORTAR_IFC` (botão "Exportar IFC")
 Abre a janela de exportação:
@@ -27,7 +29,7 @@ Abre a janela de exportação:
 | Objetos | Vigas e pilares, Chapas, Parafusos, Chumbadores, Soldas, Peças especiais, Ligações, Outros |
 | Georreferência | Sem georreferência, SIRGAS 2000 / UTM (zona, hemisfério) ou Coordenadas X, Y, Z da obra (nome do sistema) |
 | Ponto base | Botão **Selecionar...**: a janela some, você clica no ponto no modelo e a janela volta com as coordenadas (UCS convertida para globais) |
-| Coordenadas reais | X/E, Y/N e Z, em metros (aceita vírgula ou ponto) |
+| Coordenadas reais | X/E, Y/N e Z, em **metros ou milímetros** (seletor de unidade, desde a 0.5.0; aceita vírgula ou ponto) |
 | Ângulo | Rotação (anti-horária, do X do modelo até o Leste) ou Azimute (horário, do Norte até o +Y do modelo) |
 | Arquivo de saída | Caminho do `.ifc`; o relatório `.report.json` é gravado ao lado |
 

@@ -31,6 +31,7 @@ Exportar um modelo de estrutura metálica para IFC costuma significar escolher e
 | 🧩 | **Modelo neutro** | Camada intermediária independente do CAD, do protocolo e da biblioteca IFC — testável sem abrir o Advance Steel |
 | 🗂️ | **Preservação integral** | Todas as propriedades acessíveis — gerais, herdadas, específicas e User Attributes — sem whitelist fechada |
 | 🌎 | **Georreferenciamento real** | `IfcProjectedCRS` + `IfcMapConversion` a partir de um ponto de controle e do ângulo com o Norte |
+| 🤖 | **Conector IA** | Um assistente de IA (Claude Code) lê o modelo e exporta IFC pelo próprio plugin, só por leitura — [docs/AI-CONNECTOR.md](docs/AI-CONNECTOR.md) |
 | 📦 | **Exportador IFC4 próprio** | Não depende do exportador nativo; cada exportação gera um relatório de cobertura e limitações |
 
 ## 🧭 Arquitetura
@@ -94,6 +95,7 @@ Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADM
 | [docs/IFC4-MAPPING.md](docs/IFC4-MAPPING.md) | Matriz de mapeamento para IFC4 |
 | [IFC-EXPORTER.md](IFC-EXPORTER.md) | Especificação do exportador IFC |
 | [GEOREFERENCING.md](GEOREFERENCING.md) | Especificação do georreferenciamento |
+| [docs/AI-CONNECTOR.md](docs/AI-CONNECTOR.md) | Conector IA: ponte local, servidor MCP próprio, ferramentas e instalação |
 | [decisions/](decisions/) | Registros de decisões de arquitetura (ADRs) |
 
 ## 🙏 Créditos

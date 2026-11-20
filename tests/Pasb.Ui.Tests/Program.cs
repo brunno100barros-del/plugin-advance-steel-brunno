@@ -49,6 +49,33 @@ internal static class Program
             True(g.Mode == GeoMode.SirgasUtm && g.UtmZone == 23 && g.RotationDegrees == -30 && g.ModelPoint.X == 1000, "parâmetros");
             True(s.Validate().Count == 0, string.Join("; ", s.Validate()));
         });
+        Run("coordenadas reais em milímetros viram metros", () =>
+        {
+            var s = new ExportSettings
+            {
+                Geo = GeoChoice.Local, LocalCrsName = "Obra", TargetUnit = TargetUnit.Millimeters,
+                TargetX = 12500, TargetY = -3000, TargetZ = 800, OutputPath = @"C:\x\mm.ifc",
+            };
+            GeoParameters g = s.ToGeoParameters(0.001)!;
+            True(Math.Abs(g.TargetPoint.X - 12.5) < 1e-12 && Math.Abs(g.TargetPoint.Y + 3) < 1e-12 && Math.Abs(g.TargetPoint.Z - 0.8) < 1e-12, "conversão");
+            // UTM digitado em mm: 500 000 m = 500 000 000 mm deve continuar plausível.
+            var u = new ExportSettings
+            {
+                Geo = GeoChoice.Sirgas, UtmZone = 22, TargetUnit = TargetUnit.Millimeters,
+                TargetX = 500000000, TargetY = 7400000000, OutputPath = @"C:\x\mm.ifc",
+            };
+            True(u.Validate().Count == 0, string.Join("; ", u.Validate()));
+            True(new ExportSettings().TargetUnit == TargetUnit.Meters, "padrão em metros");
+        });
+        Run("janela: unidade das coordenadas reais é lida e devolvida", () =>
+        {
+            var s = new ExportSettings { Geo = GeoChoice.Local, LocalCrsName = "L", TargetUnit = TargetUnit.Millimeters, TargetX = 1234.5, OutputPath = @"C:\x\u.ifc" };
+            using var dlg = new ExportDialog(s);
+            True(dlg.Collect(true) && dlg.Settings.TargetUnit == TargetUnit.Millimeters && dlg.Settings.TargetX == 1234.5, "milímetros preservado");
+            ComboBox unit = (ComboBox)typeof(ExportDialog).GetField("_unit", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dlg)!;
+            unit.SelectedIndex = 0;
+            True(dlg.Collect(true) && dlg.Settings.TargetUnit == TargetUnit.Meters, "troca para metros");
+        });
         Run("modo local exige nome do sistema", () =>
         {
             var s = new ExportSettings { Geo = GeoChoice.Local, LocalCrsName = "", OutputPath = @"C:\x\a.ifc" };

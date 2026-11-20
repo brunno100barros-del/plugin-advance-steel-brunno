@@ -18,5 +18,7 @@ public sealed class Plugin : IExtensionApplication
 
     public void Terminate()
     {
+        // Fecha a ponte do Conector IA e apaga o arquivo de descoberta.
+        try { AiConnector.Stop(); } catch (System.Exception) { }
     }
 }

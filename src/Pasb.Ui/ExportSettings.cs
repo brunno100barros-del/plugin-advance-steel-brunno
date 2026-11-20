@@ -14,6 +14,7 @@ namespace Pasb.Ui;
 public enum ExportScope { Model, Selection }
 public enum GeoChoice { None, Sirgas, Local }
 public enum AngleInput { Rotation, Azimuth }
+public enum TargetUnit { Meters, Millimeters }
 
 /// <summary>Tudo o que a janela de exportação coleta. Serializável para lembrar a última configuração.</summary>
 public sealed class ExportSettings
@@ -36,10 +37,16 @@ public sealed class ExportSettings
     public double BaseY { get; set; }
     public double BaseZ { get; set; }
 
-    /// <summary>Coordenadas de destino do ponto base, em metros.</summary>
+    /// <summary>Coordenadas de destino do ponto base, na unidade <see cref="TargetUnit"/>.</summary>
     public double TargetX { get; set; }
     public double TargetY { get; set; }
     public double TargetZ { get; set; }
+
+    /// <summary>Unidade em que <see cref="TargetX"/>, <see cref="TargetY"/> e <see cref="TargetZ"/> foram digitadas.</summary>
+    public TargetUnit TargetUnit { get; set; } = TargetUnit.Meters;
+
+    /// <summary>Fator da unidade das coordenadas reais para metros.</summary>
+    public double TargetUnitToMeters => TargetUnit == TargetUnit.Millimeters ? 0.001 : 1.0;
 
     public AngleInput AngleMode { get; set; } = AngleInput.Rotation;
     public double AngleDegrees { get; set; }
@@ -63,7 +70,8 @@ public sealed class ExportSettings
         if (Geo == GeoChoice.None) return null;
         double rotation = AngleMode == AngleInput.Azimuth ? GeoParameters.RotationFromModelNorthAzimuth(AngleDegrees) : AngleDegrees;
         var model = new Point3(BaseX, BaseY, BaseZ);
-        var target = new Point3(TargetX, TargetY, TargetZ);
+        double k = TargetUnitToMeters;
+        var target = new Point3(TargetX * k, TargetY * k, TargetZ * k);
         return Geo == GeoChoice.Sirgas
             ? new GeoParameters(GeoMode.SirgasUtm, model, target, rotation, unitToMeters, UtmZone, Hemisphere)
             : new GeoParameters(GeoMode.LocalXyz, model, target, rotation, unitToMeters, LocalCrsName: LocalCrsName);

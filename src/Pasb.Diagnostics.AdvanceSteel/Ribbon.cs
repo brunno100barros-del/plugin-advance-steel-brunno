@@ -18,6 +18,7 @@ internal static class PasbRibbon
 {
     private const string TabId = "PASB_TAB";
     private static bool _hooked;
+    private static RibbonButton? _connector;
 
     /// <summary>Chamado pelo Initialize do plugin. Nunca lança: falha na aba não pode impedir o AutoCAD de abrir.</summary>
     public static void Initialize()
@@ -56,8 +57,27 @@ internal static class PasbRibbon
         tab.Panels.Add(Panel("Diagnóstico",
             Large("Diagnóstico\nseleção", "PASB_DIAG_SEL", "SEL", Color.FromRgb(90, 90, 96), "Lê os objetos selecionados (somente leitura) e grava o resultado em Documentos\\PASB-Diagnostics."),
             Large("Diagnóstico\nmodelo", "PASB_DIAG_ALL", "ALL", Color.FromRgb(90, 90, 96), "Lê todos os objetos do modelo (somente leitura).")));
+        _connector = Large("Conector\nIA", "PASB_CONECTOR_IA", "IA", Color.FromRgb(120, 70, 170),
+            "Liga/desliga a ponte local para o assistente de IA (Claude) ler o modelo e exportar IFC. Nenhuma ferramenta altera o desenho.");
+        ApplyConnectorLook(AiConnector.IsRunning);
+        tab.Panels.Add(Panel("IA", _connector));
         tab.Panels.Add(Panel("PASB", Large("Sobre", "PASB_DIAG_VERSION", "i", Color.FromRgb(60, 140, 90), "Mostra a versão instalada do plugin.")));
         ribbon.Tabs.Add(tab);
+    }
+
+    /// <summary>Atualiza o botão "Conector IA" (ligado em verde, desligado em roxo). Nunca lança.</summary>
+    public static void SetConnectorState(bool on)
+    {
+        try { ApplyConnectorLook(on); } catch (Exception) { }
+    }
+
+    private static void ApplyConnectorLook(bool on)
+    {
+        if (_connector == null) return;
+        Color c = on ? Color.FromRgb(40, 160, 80) : Color.FromRgb(120, 70, 170);
+        _connector.Text = on ? "Conector IA\n(ligado)" : "Conector\nIA";
+        _connector.LargeImage = Icon("IA", c, 32);
+        _connector.Image = Icon("IA", c, 16);
     }
 
     private static RibbonPanel Panel(string title, params RibbonItem[] items)
