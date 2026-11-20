@@ -105,10 +105,20 @@ public sealed class AiConnector
 
     internal static void Stop()
     {
-        _server?.Dispose();
-        _server = null;
-        while (Queue.TryDequeue(out Job? job)) job.Done.TrySetException(new BridgeException("O Conector IA foi desligado."));
+        StopBridgeOnly();
         PasbRibbon.SetConnectorState(false);
+    }
+
+    /// <summary>
+    /// Para a ponte sem tocar em interface (WPF/WinForms). Usado no Terminate: mexer na faixa de opções enquanto o AutoCAD
+    /// fecha causou ERRO FATAL c015000f na 0.5.0.
+    /// </summary>
+    internal static void StopBridgeOnly()
+    {
+        BridgeServer? s = _server;
+        _server = null;
+        s?.Dispose();
+        while (Queue.TryDequeue(out Job? job)) job.Done.TrySetException(new BridgeException("O Conector IA foi desligado."));
     }
 
     // ------------------------------------------------------------------ pedidos (thread da ponte)

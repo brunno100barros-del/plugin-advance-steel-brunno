@@ -18,7 +18,8 @@ public sealed class Plugin : IExtensionApplication
 
     public void Terminate()
     {
-        // Fecha a ponte do Conector IA e apaga o arquivo de descoberta.
-        try { AiConnector.Stop(); } catch (System.Exception) { }
+        // Só fecha a ponte do Conector IA se estiver ligada (apaga o arquivo de descoberta). Nada de interface aqui:
+        // redesenhar o ícone da faixa de opções durante o fechamento derrubava o AutoCAD (ERRO FATAL c015000f).
+        try { if (AiConnector.IsRunning) AiConnector.StopBridgeOnly(); } catch (System.Exception) { }
     }
 }
