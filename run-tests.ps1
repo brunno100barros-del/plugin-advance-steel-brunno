@@ -7,9 +7,11 @@
 #>
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'; $env:DOTNET_NOLOGO = '1'
-$projects = 'tests\Pasb.Diagnostics.Core.Tests', 'tests\Pasb.Model.Tests', 'tests\Pasb.Georeferencing.Tests', 'tests\Pasb.IfcExport.Tests', 'tests\Pasb.Ui.Tests', 'tests\Pasb.Connector.Tests'
+$projects = 'tests\Pasb.Diagnostics.Core.Tests', 'tests\Pasb.Model.Tests', 'tests\Pasb.Georeferencing.Tests', 'tests\Pasb.IfcExport.Tests', 'tests\Pasb.Ui.Tests', 'tests\Pasb.Connector.Tests', 'tests\Pasb.IfcImport.Tests'
 # O teste de ponta a ponta do Conector IA inicia o Pasb.Mcp.exe compilado.
 & dotnet build (Join-Path $PSScriptRoot 'src\Pasb.Mcp') -c Release -nologo -v q | Out-Null
+# Os testes de importação rodam o Pasb.IfcImport.exe compilado (xBIM).
+& dotnet build (Join-Path $PSScriptRoot 'src\Pasb.IfcImport') -c Release -nologo -v q | Out-Null
 $failed = 0
 foreach ($p in $projects) {
     Write-Host "=== $p"

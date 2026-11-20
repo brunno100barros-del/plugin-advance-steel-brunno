@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Pasb.Georeferencing\Pasb.Georeferencing.csproj" />
     <ProjectReference Include="..\Pasb.IfcExport\Pasb.IfcExport.csproj" />
+    <ProjectReference Include="..\Pasb.IfcImport.Model\Pasb.IfcImport.Model.csproj" />
   </ItemGroup>
 
 </Project>

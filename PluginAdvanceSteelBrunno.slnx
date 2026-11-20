@@ -11,6 +11,10 @@
     <Project Path="src/Pasb.Bridge/Pasb.Bridge.csproj" />
     <Project Path="src/Pasb.Connector/Pasb.Connector.csproj" />
     <Project Path="src/Pasb.Mcp/Pasb.Mcp.csproj" />
+    <Project Path="src/Pasb.IfcImport.Model/Pasb.IfcImport.Model.csproj" />
+    <Project Path="src/Pasb.IfcImport/Pasb.IfcImport.csproj">
+      <Platform Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Pasb.Diagnostics.Core.Tests/Pasb.Diagnostics.Core.Tests.csproj" />
@@ -19,6 +23,7 @@
     <Project Path="tests/Pasb.IfcExport.Tests/Pasb.IfcExport.Tests.csproj" />
     <Project Path="tests/Pasb.Ui.Tests/Pasb.Ui.Tests.csproj" />
     <Project Path="tests/Pasb.Connector.Tests/Pasb.Connector.Tests.csproj" />
+    <Project Path="tests/Pasb.IfcImport.Tests/Pasb.IfcImport.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/ApiInventory/ApiInventory.csproj" />

@@ -123,6 +123,34 @@ internal static class Program
             using var d = new ExportDialog(new ExportSettings { OutputPath = @"C:\x\a.ifc" }, "0.7.1");
             True(d.BackColor == Brand.BgDark && d.Controls.OfType<Panel>().Any(p => p.Dock == DockStyle.Top && p.Height == 64), "janela com fundo e cabeçalho Coordix");
         });
+        Run("janela de importação IFC: níveis com cor, tipos e escolha", () =>
+        {
+            var scan = new Pasb.IfcImport.Model.IfcScan
+            {
+                File = @"C:\x\obra.ifc", Schema = "Ifc4", UnitsPerMetre = 1000,
+                Types = { new() { Name = "IfcColumn", Count = 8 }, new() { Name = "IfcBeam", Count = 2 }, new() { Name = "IfcOpeningElement", Count = 2 } },
+                Storeys = { new() { Key = "A", Name = "Térreo", Elevation = 0, Count = 6 }, new() { Key = "B", Name = "Cobertura", Elevation = 6000, Count = 4 } },
+            };
+            var s = new ImportSettings { StoreyColors = { ["Cobertura"] = 140 } };
+            using var dlg = new ImportDialog(s, _ => scan);
+            True(!dlg.Collect() && dlg.LastErrors.Any(e => e.Contains("Abra")), "sem arquivo não importa");
+            dlg.LoadScan(scan);
+            True(dlg.Collect() && dlg.Choice != null, string.Join("; ", dlg.LastErrors));
+            ImportChoice c = dlg.Choice!;
+            True(c.StoreyKeys.SequenceEqual(new[] { "A", "B" }) && c.Types.SequenceEqual(new[] { "IfcColumn", "IfcBeam" }), "tudo marcado (aberturas fora da lista)");
+            True(c.StoreyColors["A"] == Pasb.IfcImport.Model.ImportNaming.StoreyColor(0) && c.StoreyColors["B"] == 140, "cor padrão e cor lembrada pelo nome do nível");
+            True(s.StoreyColors["Térreo"] == c.StoreyColors["A"], "cor do nível guardada nas opções");
+            True(c.Settings.Geometry == ImportGeometry.Solid && c.Settings.LayerMode == ImportLayerMode.ByStorey && c.Settings.ColorMode == ImportColorMode.ByStorey, "padrões");
+            DataGridView storeys = (DataGridView)typeof(ImportDialog).GetField("_storeys", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dlg)!;
+            storeys.Rows[0].Cells[0].Value = false;
+            CheckBox openings = (CheckBox)typeof(ImportDialog).GetField("_openings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dlg)!;
+            openings.Checked = true;
+            True(dlg.Collect() && dlg.Choice!.StoreyKeys.SequenceEqual(new[] { "B" }) && dlg.Choice.Types.Contains("IfcOpeningElement"), "nível desmarcado e aberturas incluídas");
+            storeys.Rows[1].Cells[0].Value = false;
+            True(!dlg.Collect() && dlg.LastErrors.Any(e => e.Contains("nível")), "nenhum nível marcado");
+            True(ImportDialog.FriendlyName("IfcColumn") == "Pilares" && ImportDialog.FriendlyName("IfcFooBar") == "FooBar", "nomes amigáveis");
+            True(Aci.ToColor(1) == System.Drawing.Color.FromArgb(255, 0, 0) && Aci.ToColor(5) == System.Drawing.Color.FromArgb(0, 0, 255), "cores ACI básicas");
+        });
         Run("modo local exige nome do sistema", () =>
         {
             var s = new ExportSettings { Geo = GeoChoice.Local, LocalCrsName = "", OutputPath = @"C:\x\a.ifc" };

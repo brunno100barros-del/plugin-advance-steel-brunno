@@ -53,7 +53,9 @@ internal static class PasbRibbon
 
         var tab = new RibbonTab { Title = "PASB", Id = TabId };
         tab.Panels.Add(Panel("IFC", Large("Exportar\nIFC", "PASB_EXPORTAR_IFC", "IFC", false,
-            "Exporta o modelo para IFC4 georreferenciado, com todas as propriedades do Advance Steel.")));
+            "Exporta o modelo para IFC4 georreferenciado, com todas as propriedades do Advance Steel."),
+            Large("Importar\nIFC", "PASB_IMPORTAR_IFC", "IMP", false,
+            "Importa qualquer IFC como sólidos (plotam) ou malhas (leves), com níveis, cores por nível, layers e blocos.")));
         tab.Panels.Add(Panel("Listas", Large("Lista de\nmaterial", "PASB_LISTA_MATERIAL", "LM", false,
             "Lê o modelo (sem alterá-lo) e insere no desenho uma tabela com perfis, chapas e parafusos: comprimento, quantidade, peso e pintura.")));
         tab.Panels.Add(Panel("Diagnóstico",
