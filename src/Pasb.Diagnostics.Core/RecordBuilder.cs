@@ -15,14 +15,22 @@ public sealed class RecordBuilder
     public delegate bool ExtraSerializer(object value, out JsonNode? node, out ReadStatus status);
 
     private readonly ExtraSerializer? _extra;
+    private readonly Action<string>? _beforeRead;
 
-    public RecordBuilder(ExtraSerializer? extra = null) => _extra = extra;
+    /// <param name="extra">Serializador de tipos que o núcleo não conhece.</param>
+    /// <param name="beforeRead">Chamado com "Classe.Membro(argumento)" imediatamente antes de cada leitura (trace).</param>
+    public RecordBuilder(ExtraSerializer? extra = null, Action<string>? beforeRead = null)
+    {
+        _extra = extra;
+        _beforeRead = beforeRead;
+    }
 
     public List<PropertyRecord> Records { get; } = new();
 
     /// <summary>Executa uma leitura e registra o resultado.</summary>
     public void Read(string name, string declaringType, string source, string? argument, Type declaredType, Func<object?> read)
     {
+        _beforeRead?.Invoke(declaringType + "." + name + (argument is null ? "" : "(" + argument + ")") + " [" + source + "]");
         object? value;
         try
         {

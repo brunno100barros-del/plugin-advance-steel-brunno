@@ -22,10 +22,11 @@ internal static class ObjectReader
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> GetterCache = new();
 
-    public static (JsonObject header, List<PropertyRecord> records, string objectType) Read(FilerObject o)
+    /// <param name="trace">Recebe uma linha antes de cada leitura (ver TraceLog).</param>
+    public static (JsonObject header, List<PropertyRecord> records, string objectType) Read(FilerObject o, Action<string> trace)
     {
         Type t = o.GetType();
-        var b = new RecordBuilder(AsValueSerializer.TrySerialize);
+        var b = new RecordBuilder(AsValueSerializer.TrySerialize, trace);
 
         // 5.1 Identidade
         var header = new JsonObject
@@ -33,9 +34,13 @@ internal static class ObjectReader
             ["clrType"] = t.FullName,
             ["inheritance"] = new JsonArray(Inheritance(t).Select(n => (JsonNode)JsonValue.Create(n)!).ToArray()),
         };
+        trace("identidade: Handle");
         TryHeader(header, "handle", () => JsonValue.Create(o.Handle));
+        trace("identidade: ASId");
         TryHeader(header, "asId", () => JsonValue.Create(o.ASId));
+        trace("identidade: GetUniqueId");
         TryHeader(header, "uniqueId", () => JsonValue.Create(o.GetUniqueId().ToString("D")));
+        trace("identidade: Type");
         TryHeader(header, "objectType", () => ValueSerializer.EnumValue(o.Type()));
 
         // 5.2 Getters automáticos (públicos, de instância, legíveis, sem índice, incluindo herdados)

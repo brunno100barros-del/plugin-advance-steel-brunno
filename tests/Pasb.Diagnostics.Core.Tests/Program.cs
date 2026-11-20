@@ -26,6 +26,8 @@ internal static class Program
         Run(nameof(ExtraSerializerIsUsed), ExtraSerializerIsUsed);
         Run(nameof(NullRecordHasExplicitNullRawValue), NullRecordHasExplicitNullRawValue);
         Run(nameof(OutputWritesAllFiles), OutputWritesAllFiles);
+        Run(nameof(TraceIsWrittenBeforeEachRead), TraceIsWrittenBeforeEachRead);
+        Run(nameof(TraceSurvivesWithoutDispose), TraceSurvivesWithoutDispose);
 
         Console.WriteLine($"{_passed} passaram, {_failed} falharam");
         return _failed == 0 ? 0 : 1;
@@ -143,6 +145,37 @@ internal static class Program
         JsonObject j = One(null, typeof(string)).ToJson();
         Equal(true, j.ContainsKey("rawValue"), "chave presente");
         Equal(null, j["rawValue"], "valor null");
+    }
+
+    private static void TraceIsWrittenBeforeEachRead()
+    {
+        var steps = new List<string>();
+        var b = new RecordBuilder(null, s => steps.Add(s));
+        string? seenDuringRead = null;
+        b.Read("Peso", "Beam", ReadSource.Method, "1", typeof(double), () => { seenDuringRead = steps.LastOrDefault(); return 1.0; });
+        Equal("Beam.Peso(1) [method]", seenDuringRead, "trace gravado antes da leitura");
+    }
+
+    /// <summary>Simula a queda: o arquivo é lido sem fechar o TraceLog; as linhas já precisam estar no disco.</summary>
+    private static void TraceSurvivesWithoutDispose()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "pasb-trace-" + Guid.NewGuid().ToString("N") + ".log");
+        var t = new TraceLog(path);
+        try
+        {
+            t.Write("passo 1");
+            t.Write("passo 2");
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var sr = new StreamReader(fs);
+            string[] lines = sr.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Equal(2, lines.Length, "linhas no disco antes do Dispose");
+            Equal(true, lines[1].TrimEnd().EndsWith("passo 2"), "última linha");
+        }
+        finally
+        {
+            t.Dispose();
+            File.Delete(path);
+        }
     }
 
     private static void OutputWritesAllFiles()

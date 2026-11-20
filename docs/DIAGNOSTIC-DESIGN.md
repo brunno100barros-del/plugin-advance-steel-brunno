@@ -175,7 +175,11 @@ Estados: `Read`, `Empty`, `Null`, `NotApplicable`, `Unavailable`, `ReadError` (i
 
 Metadados da execução: versão do Advance Steel (`VersionInformation`), versão do diagnóstico, comando usado, data e hora, quantidade de objetos, unidades do desenho (`INSUNITS`), duração, se `DiscardAllChanges()` foi chamado, e um resumo de erros. Sem caminhos de usuário nem nome de cliente.
 
-### 7.3 `coverage.csv`
+### 7.3 `trace.log`
+
+Adicionado na versão 0.1.1 após o Teste 1. Uma linha por etapa (abertura de cada objeto e cada leitura), gravada e enviada ao disco **antes** de executar a etapa. Se o AutoCAD cair, a última linha indica o que estava sendo lido.
+
+### 7.4 `coverage.csv`
 
 Uma linha por classe × membro: quantos objetos tiveram `Read`, `Empty`, `Null`, `ReadError` e `ComplexNotSerialized`. É a base para atualizar a matriz com o estado "executado".
 
@@ -221,7 +225,7 @@ Isso segue a regra de [ARCHITECTURE.md](../ARCHITECTURE.md): só o adapter Autod
 
 1. **Inicialização vazia:** `Initialize()` não lê o desenho, não abre arquivos, não cria janelas e não registra eventos. Só os comandos existem.
 2. **Nada roda sozinho:** nenhum reator, evento ou temporizador. O código só executa quando um comando `PASB_DIAG_*` é digitado.
-3. **Falha isolada:** qualquer exceção dentro de um comando é capturada e mostrada na linha de comando, sem derrubar o Advance Steel.
+3. **Falha isolada:** qualquer exceção .NET dentro de um comando é capturada e mostrada na linha de comando. **Limitação comprovada no Teste 1** ([DIAGNOSTIC-TEST-LOG.md](DIAGNOSTIC-TEST-LOG.md)): erros fatais do AutoCAD (código `0xE0000001`, como `eNotOpenForWrite`) encerram o processo sem passar por `catch`. Para esses casos existe o `trace.log`, gravado no disco antes de cada leitura.
 4. **Versão visível:** um comando `PASB_DIAG_VERSION` mostra a versão instalada, para saber qual build está carregado.
 5. **Remoção simples:** apagar a pasta `PASB-Diagnostics.bundle` com o Advance Steel fechado. O roteiro de remoção fica no README do projeto.
 

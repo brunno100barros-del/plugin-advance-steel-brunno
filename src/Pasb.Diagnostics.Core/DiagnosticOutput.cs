@@ -20,11 +20,14 @@ public sealed class DiagnosticOutput : IDisposable
     {
         Directory.CreateDirectory(directory);
         DirectoryPath = directory;
-        _objects = new StreamWriter(Path.Combine(directory, "objects.jsonl"), false, new UTF8Encoding(false));
+        // AutoFlush: cada objeto vai para o disco assim que é lido, para sobreviver a uma queda do AutoCAD.
+        _objects = new StreamWriter(Path.Combine(directory, "objects.jsonl"), false, new UTF8Encoding(false)) { AutoFlush = true };
         Coverage = new CoverageReport();
     }
 
     public string DirectoryPath { get; }
+
+    public string TracePath => Path.Combine(DirectoryPath, "trace.log");
 
     public CoverageReport Coverage { get; }
 

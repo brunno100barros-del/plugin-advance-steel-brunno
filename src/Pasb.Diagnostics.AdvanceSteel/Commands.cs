@@ -115,13 +115,18 @@ public sealed class Commands
         string discard = "não chamado";
 
         using (var output = new DiagnosticOutput(outDir))
+        using (var trace = new TraceLog(output.TracePath))
         {
+            trace.Write($"inicio {command} versao {DiagnosticVersion} DBMOD={dbmodBefore}");
             using (doc.LockDocument())
             using (var access = new DocumentAccess(null, true))   // somente leitura; nunca há Commit()
             {
+                trace.Write("DocumentAccess(readOnly) aberto");
                 try
                 {
+                    trace.Write("coletando ids");
                     var (ids, nonSteel) = collect();
+                    trace.Write($"ids: {ids.Length}, ignorados: {nonSteel}");
                     run["requestedObjects"] = ids.Length;
                     run["nonAdvanceSteelEntitiesIgnored"] = nonSteel;
                     ed.WriteMessage($"\nPASB: lendo {ids.Length} objeto(s)...");
@@ -129,14 +134,18 @@ public sealed class Commands
                     for (int i = 0; i < ids.Length; i++)
                     {
                         FilerObject? o;
+                        trace.Write($"[{i + 1}/{ids.Length}] Open handle={SafeHandle(ids[i])}");
                         try { o = DatabaseManager.Open(ids[i]); }
                         catch (System.Exception ex) { openErrors++; output.WriteOpenFailure(SafeHandle(ids[i]), ex); continue; }
                         if (o == null) { openErrors++; output.WriteOpenFailure(SafeHandle(ids[i]), new InvalidOperationException("DatabaseManager.Open retornou null.")); continue; }
 
                         try
                         {
-                            var (header, records, objectType) = ObjectReader.Read(o);
+                            string h = SafeHandle(ids[i]) ?? "?";
+                            trace.Write($"[{i + 1}/{ids.Length}] tipo={o.GetType().Name}");
+                            var (header, records, objectType) = ObjectReader.Read(o, step => trace.Write($"  {h} {step}"));
                             output.WriteObject(header, objectType, records);
+                            trace.Write($"[{i + 1}/{ids.Length}] gravado ({records.Count} leituras)");
                         }
                         catch (System.Exception ex)
                         {
@@ -150,12 +159,15 @@ public sealed class Commands
                 finally
                 {
                     // Terceira barreira: descarta qualquer alteração acidental (seção 2).
+                    trace.Write("DiscardAllChanges");
                     try { access.DiscardAllChanges(); discard = "ok"; }
                     catch (System.Exception ex) { discard = "falhou: " + ex.GetType().Name + ": " + ex.Message; }
                 }
             }
 
+            trace.Write($"DocumentAccess liberado; discard={discard}");
             object? dbmodAfter = SysVar("DBMOD");
+            trace.Write($"fim DBMOD={dbmodAfter}");
             bool changed = !Equals(dbmodBefore, dbmodAfter);
             run["dbmodAfter"] = dbmodAfter?.ToString();
             run["dbmodChanged"] = changed;
