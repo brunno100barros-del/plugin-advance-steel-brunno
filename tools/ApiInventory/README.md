@@ -35,6 +35,16 @@ Opções:
 
 A pasta `inventory-output/` está no `.gitignore`, porque o conteúdo deriva de arquivos da Autodesk.
 
+## Matriz por classe
+
+Depois de gerar o inventário, na raiz do repositório:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\ApiInventory\New-ClassMatrix.ps1
+```
+
+Gera `docs/API-CLASS-MATRIX.md`. A coluna "MCP" vem de uma lista montada à mão dentro do script, a partir do código do AdvancedSteelMCP. O script precisa ficar salvo em UTF-8 **com BOM**, porque o Windows PowerShell 5.1 lê arquivos sem BOM como ANSI e estraga os acentos.
+
 ## Limitações
 
 - Lista membros públicos e protegidos. Não diz se um getter funciona, tem efeito colateral ou depende de transação: isso só o diagnóstico em execução responde.

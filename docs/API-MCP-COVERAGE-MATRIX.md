@@ -77,15 +77,51 @@ Uma linha "MCP" comprova que o membro existe na API, mas não que o valor retorn
 | Descoberta | Todas | Membros públicos declarados | `advsteel_api_help` (reflexão em runtime) | MCP | `ScriptHandlers.cs:235-285`; só membros declarados no tipo, sem herdados |
 | Demais | Todas | Membros públicos herdados e específicos | leitura de metadados | API | 474 tipos e 5.548 membros catalogados por `tools/ApiInventory`; detalhamento por classe ainda a incorporar nesta matriz |
 
-## 4. Perdas sistemáticas no MCP
+## 4. Detalhamento por classe
+
+A lista completa de membros por classe, com classificação de leitura e marcação do que o MCP lê, está em [API-CLASS-MATRIX.md](API-CLASS-MATRIX.md), gerada por script a partir do inventário.
+
+Resumo (só membros declarados em cada classe; os herdados ficam na classe-base):
+
+| Classe | Getters públicos | Membros lidos pelo MCP |
+|---|---|---|
+| FilerObject | 4 | 3 |
+| ConstructionElement | 12 | 3 |
+| AtomicElement | 38 | 14 |
+| MainAlias | 20 | 0 |
+| Beam | 17 | 13 |
+| PlateBase | 15 | 8 |
+| BoltPattern | 8 | 5 |
+| ScrewBoltPattern | 27 | 7 |
+| AnchorPattern | 23 | 1 |
+| WeldPattern | 17 | 6 |
+| SpecialPart | 8 | 2 |
+| PassiveConstructionObject | 8 | 2 |
+| UserAutoConstructionObject | 17 | 2 |
+
+A coluna do MCP conta propriedades e métodos; a de getters, só propriedades.
+
+### 4.1 Destaques
+
+1. **Fabricação e logística (MainAlias):** `HeatNumber`, `PONumber`, `RequisitionNumber`, `Supplier`, `FabricationStation`, `Carrier`, `LoadNumber`, `DeliveryDate`, `ShippedDate`, `ApprovalStatus`, `ApprovalStatusCode`, `ApprovalComment` e as três classes de galvanização. São 20 getters, e o MCP não lê nenhum.
+2. **Chumbadores:** o MCP só lê Nx, Ny, Dx, Dy e raio quando o objeto é `CountableScrewBoltPattern` ou `CircleScrewBoltPattern` (`Objects.cs:312-320`). `AnchorPattern` deriva de `ScrewBoltPattern`, não dessas classes, e declara seus próprios `Nx`, `Ny`, `Dx`, `Dy`, `Radius`, `Wx`, `Wy`, `Length`, `Height`, `ThreadLength`, `AnchorUnfoldedLength` e `OrientationType`. Para chumbadores, o MCP lê só `AnchorType`.
+3. **Parafusos:** a geometria completa do conjunto (`NutDiameter`, `NutHeight`, `BoltHeadDiameter`, `BoltHeadHeight`, `BindingLength`, `ScrewBoltType`, `Annotation` e outros) existe na API e não é lida pelo MCP.
+4. **Soldas:** `MainEffectiveThroat`, `MainRootOpening`, `MainPreparationDepth`, os equivalentes `Double*`, `MainWeldText`, `Pitch`, `SingleSeamLength`, `SeamDistance`, `Prefix`, `AdditionalData`, `GetFaceShape` e `GetSeamExecuting` não são lidos pelo MCP.
+5. **Vigas:** faltam no MCP, entre outros, `Deviation`, `ShrinkValue`, `Offsets`, `IsCrossSectionMirrored`, `Runname`, `PhysCSEnd`, os sistemas `SysCS*`, `GetSawInformation`, `GetLengthOffset` e `GetProfType`.
+6. **Catálogo de atributos:** o enum `Modelling.eObjectsAttribute` lista os atributos que o Advance Steel controla por tipo de objeto (por exemplo `kBeam_*`, `kPlate_*`, `kScrew_*`, `kWeld_*`, contraflecha, grating, fabricação). Inclui **exatamente 10 User Attributes** (`kUserAttr1` a `kUserAttr10`, valores 351 a 360). Esse enum serve de lista de conferência do inventário, mas não é um método de leitura.
+7. **Atributos controlados por ligação:** `ConstructionElement.getAttributeStatus(eObjectsAttribute)` existe e pode indicar se um atributo está bloqueado por uma ligação. O retorno (`int`) ainda precisa ser interpretado em teste.
+8. **`PassiveConstructionObject.ParameterSet`:** retorna `RuleParameterSet`, que não tem membros públicos de leitura. Não é caminho para os parâmetros da ligação; o candidato continua sendo `Save()` + `IFiler.GetItems()`.
+
+## 5. Perdas sistemáticas no MCP
 
 1. `Json.Try` descarta exceções e valores nulos (`Infrastructure.cs:194-202`): erro de leitura e campo ausente ficam indistinguíveis.
 2. `Blank()` converte texto vazio, `-` e `Not defined` em nulo (`Objects.cs:391`): viola a distinção exigida em [PROPERTY-PRESERVATION.md](PROPERTY-PRESERVATION.md).
 3. Valores numéricos são arredondados por `Geo.R` (padrão de 3 casas; vetores com 6) antes de serializar, e valores não finitos (NaN, infinito) viram `0` (`Infrastructure.cs:184-188`): a precisão original não é preservada e um valor inválido fica indistinguível de zero.
 4. User Attributes: 10 índices fixos, vazios omitidos, exceções descartadas.
 
-## 5. Próximos passos
+## 6. Próximos passos
 
 - ~~Gerar o inventário completo das assemblies~~ feito com `tools/ApiInventory` em 2026-11-19 (ver [SDK-2027-FINDINGS.md](SDK-2027-FINDINGS.md), seção 7).
-- Incorporar à matriz os membros específicos de Beam, PlateBase, ScrewBoltPattern, AnchorPattern, WeldPattern e SpecialPart a partir do inventário.
+- ~~Incorporar à matriz os membros específicos por classe~~ feito em [API-CLASS-MATRIX.md](API-CLASS-MATRIX.md).
+- Cobrir subclasses ainda não detalhadas (StraightBeam, PolyBeam, BentBeam, Plate, FoldedPlate, Countable/CircleScrewBoltPattern, features, concreto, grid).
 - Validar as linhas MCP e API em modelo real.
