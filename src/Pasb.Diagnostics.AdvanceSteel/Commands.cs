@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Autodesk.AdvanceSteel.CADAccess;
@@ -141,14 +142,26 @@ public sealed class Commands
                     run["requestedObjects"] = ids.Length;
                     run["nonAdvanceSteelEntitiesIgnored"] = nonSteel;
                     ed.WriteMessage($"\nPASB: lendo {ids.Length} objeto(s)...");
+                    Dictionary<string, List<string>>? typeMap = null;   // montado só se algum objeto não abrir
 
                     for (int i = 0; i < ids.Length; i++)
                     {
                         FilerObject? o;
                         trace.Write($"[{i + 1}/{ids.Length}] Open handle={SafeHandle(ids[i])}");
                         try { o = DatabaseManager.Open(ids[i]); }
-                        catch (System.Exception ex) { openErrors++; output.WriteOpenFailure(SafeHandle(ids[i]), ex); continue; }
-                        if (o == null) { openErrors++; output.WriteOpenFailure(SafeHandle(ids[i]), new InvalidOperationException("DatabaseManager.Open retornou null.")); continue; }
+                        catch (System.Exception ex)
+                        {
+                            openErrors++;
+                            output.WriteOpenFailure(SafeHandle(ids[i]), ex, Identify(ids[i], ref typeMap, trace));
+                            continue;
+                        }
+                        if (o == null)
+                        {
+                            openErrors++;
+                            output.WriteOpenFailure(SafeHandle(ids[i]), new InvalidOperationException("DatabaseManager.Open retornou null."),
+                                Identify(ids[i], ref typeMap, trace));
+                            continue;
+                        }
 
                         try
                         {
@@ -196,6 +209,64 @@ public sealed class Commands
                 ed.WriteMessage($"\nPASB: ATENÇÃO: DiscardAllChanges {discard}. Feche o desenho SEM SALVAR e informe o desenvolvedor.");
             ed.WriteMessage("\n");
         }
+    }
+
+    /// <summary>
+    /// Identifica um objeto que DatabaseManager.Open não abriu, sem abri-lo:
+    /// (1) classe da entidade AutoCAD correspondente (ObjectId.ObjectClass não abre o objeto);
+    /// (2) tipo Advance Steel, cruzando o handle com GetModelObjectIds filtrado por cada eObjectType.
+    /// </summary>
+    private static JsonObject Identify(AsId id, ref Dictionary<string, List<string>>? typeMap, TraceLog trace)
+    {
+        var j = new JsonObject();
+        string? handle = SafeHandle(id);
+        trace.Write($"identificando handle={handle} sem abrir");
+        try
+        {
+            var cadId = new AcId(id.AsOldId());
+            j["autocadClass"] = cadId.ObjectClass?.Name;
+            j["autocadDxfName"] = cadId.ObjectClass?.DxfName;
+            j["autocadIsErased"] = cadId.IsErased;
+        }
+        catch (System.Exception ex) { j["autocadClassError"] = ex.GetType().Name + ": " + ex.Message; }
+
+        try
+        {
+            typeMap ??= BuildTypeMap(trace);
+            j["advanceSteelTypes"] = handle != null && typeMap.TryGetValue(handle, out List<string>? types)
+                ? new JsonArray(types.Select(t => (JsonNode)JsonValue.Create(t)!).ToArray())
+                : new JsonArray();
+        }
+        catch (System.Exception ex) { j["advanceSteelTypesError"] = ex.GetType().Name + ": " + ex.Message; }
+        return j;
+    }
+
+    /// <summary>handle → tipos eObjectType cujo filtro exato (AppendAcceptedClass) retorna o objeto. Só consultas.</summary>
+    private static Dictionary<string, List<string>> BuildTypeMap(TraceLog trace)
+    {
+        trace.Write("montando mapa de tipos por ClassTypeFilter");
+        var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (FilerObject.eObjectType t in Enum.GetValues(typeof(FilerObject.eObjectType)).Cast<FilerObject.eObjectType>().Distinct())
+        {
+            AsId[]? ids = null;
+            try
+            {
+                var filter = new ClassTypeFilter();
+                filter.RejectAllFirst();
+                filter.AppendAcceptedClass(t);
+                DatabaseManager.GetModelObjectIds(out ids, filter);
+            }
+            catch (System.Exception) { continue; }
+            foreach (AsId id in ids ?? Array.Empty<AsId>())
+            {
+                string? h = SafeHandle(id);
+                if (h == null) continue;
+                if (!map.TryGetValue(h, out List<string>? list)) map[h] = list = new List<string>();
+                list.Add(t.ToString());
+            }
+        }
+        trace.Write($"mapa de tipos: {map.Count} objetos");
+        return map;
     }
 
     private static object? SysVar(string name)

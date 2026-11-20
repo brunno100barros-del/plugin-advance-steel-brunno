@@ -51,13 +51,15 @@ public sealed class DiagnosticOutput : IDisposable
     }
 
     /// <summary>Linha para um objeto que nem chegou a ser aberto.</summary>
-    public void WriteOpenFailure(string? handle, Exception ex)
+    public void WriteOpenFailure(string? handle, Exception ex, JsonObject? identification = null)
     {
         var j = new JsonObject
         {
             ["handle"] = handle,
             ["openError"] = new JsonObject { ["type"] = ex.GetType().FullName, ["message"] = ex.Message },
         };
+        // Identificação obtida sem abrir o objeto (classe AutoCAD, tipo Advance Steel por filtro).
+        if (identification is not null) j["identification"] = identification;
         _objects.WriteLine(j.ToJsonString(Compact));
     }
 
