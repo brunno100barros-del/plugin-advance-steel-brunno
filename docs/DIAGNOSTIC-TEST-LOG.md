@@ -64,5 +64,30 @@ A linha seguinte (`GetUniqueId`) nunca foi gravada: a queda ocorreu durante a le
 ### Correção aplicada (versão 0.1.2)
 `FilerObject.ASId` entra na lista de exclusão (`ObjectReader.ExcludedGetters`), tanto na identidade quanto na leitura automática, com o motivo registrado no JSON.
 
+## Teste 3 — 2026-11-20 — versão 0.1.2 — `Portal.dwg` (cópia, exemplo do SDK)
+
+**Resultado: SUCESSO. Primeira leitura completa de um objeto, sem queda e sem alteração do modelo.**
+
+### Execução
+- Objeto: viga handle `52A`, `StraightBeam`, perfil U100 (Channels nach DIN), material S235JRG2.
+- 241 leituras em 206 ms: 207 `Read`, 30 `Empty`, 2 `Null`, 1 `Unavailable` (ASId, excluído), 1 `ComplexNotSerialized`, **0 `ReadError`**.
+- Segurança: `DBMOD` 5 antes e 5 depois (`dbmodChanged: false`); `DiscardAllChanges` executado com sucesso.
+
+### Achados
+1. **Identidade:** `GetUniqueId()` retornou `8acce620-b3c0-4c40-9dd0-2cb000b8bcbf` sem derrubar o AutoCAD. Diferente do `ASId`, foi lido em transação somente leitura. Persistência entre sessões ainda não verificada.
+2. **Unidades (confirmadas por consistência):** `GetWeight(1)` = 15168,57 e `GetWeightPerMeter` = 10,6 com `GetLength` = 1430,997 mm → 10,6 kg/m × 1,431 m = 15,17 kg, logo `GetWeight(1)` está em **gramas**, como o MCP assume (`Objects.cs:174-175`). `SpecificGravity` = 7,85e-06 (kg/mm³); `Volume` em mm³.
+3. **Comprimentos:** `SysLength` = 1500 (eixo) e `GetLength` = 1430,997 (físico); `GetLengthOffset` = 34,5 mm em cada ponta. As features `4EF` e `4F3` só aparecem com `GetFeatures(true)`.
+4. **Ligação:** a viga é controlada por um `CompoundConstructionObject` (`DrivingPassiveConstructionObject` = `4E4`, `IsGeometryNotEditable` = true). `getAttributeStatus` retornou 1 para 26 atributos e 0 para 80: provável indicação dos atributos controlados pela ligação (a confirmar).
+5. **Texto localizado:** números de peça não definidos vêm como `"indefinido"` (instalação pt-BR). O MCP só trata `"Not defined"` (`Objects.cs:391`), então em instalações em português ele não reconhece o marcador. O diagnóstico guarda o texto bruto.
+6. **Marcadores preservados:** `Coating` = `"-"` e `PureRole` = `"-"` foram mantidos como texto; o MCP os converte em nulo.
+7. **User Attributes:** os 10 índices foram lidos e registrados, todos vazios neste objeto.
+8. **Fabricação/logística (MainAlias):** os 20 getters foram lidos (vazios ou valores padrão neste modelo de exemplo).
+9. **Pendências de serialização:** `GetProfType` (`ProfileTypeU`) ficou como `ComplexNotSerialized`; `StraightBeam.Camber` e `GetConnection` retornaram nulo.
+
+### Próximos passos
+- Rodar em chapa, parafuso, chumbador, solda e ligação, ou `PASB_DIAG_ALL` no modelo inteiro.
+- Conferir os valores com a janela de propriedades do Advance Steel.
+- Serializar `ProfileType`.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.
