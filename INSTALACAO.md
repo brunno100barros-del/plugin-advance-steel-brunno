@@ -16,16 +16,16 @@ Você **não precisa** de Git, .NET SDK, Visual Studio nem do código-fonte.
 ## 1. Baixar o pacote
 
 1. Abra o repositório: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno>
-2. Entre na pasta **`release`** e clique no arquivo **`PASB-<versão>.zip`** (por exemplo, `PASB-0.8.0.zip`).
+2. Entre na pasta **`release`** e clique no arquivo **`PASB-<versão>.zip`** (por exemplo, `PASB-0.9.0.zip`).
 3. Clique em **Download** (ícone de seta para baixo, à direita, ou em "Download raw file").
 
 > Enquanto a versão nova ainda não foi mesclada no `main`, troque o ramo no seletor do GitHub (botão com o nome do ramo, no alto à esquerda) para **`docs/sdk-2027-inventory`**.
-> Link direto da versão atual nesse ramo: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/docs/sdk-2027-inventory/release/PASB-0.8.0.zip>
+> Link direto da versão atual nesse ramo: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/docs/sdk-2027-inventory/release/PASB-0.9.0.zip>
 
 **Conferir o download (opcional):** o arquivo `PASB-<versão>.zip.sha256`, ao lado do zip, traz o código de verificação. No PowerShell:
 
 ```powershell
-Get-FileHash "$env:USERPROFILE\Downloads\PASB-0.8.0.zip" -Algorithm SHA256
+Get-FileHash "$env:USERPROFILE\Downloads\PASB-0.9.0.zip" -Algorithm SHA256
 ```
 
 O resultado deve ser igual ao do arquivo `.sha256`, sem diferenciar maiúsculas de minúsculas.
@@ -35,7 +35,7 @@ O resultado deve ser igual ao do arquivo `.sha256`, sem diferenciar maiúsculas 
 1. **Feche o Advance Steel.** Se precisar, confira no Gerenciador de Tarefas que não ficou nenhum `acad.exe` aberto.
 2. **Descompacte o .zip inteiro.** Clique com o botão direito no arquivo, escolha **Extrair tudo...** e confirme em **Extrair**.
    - Não rode o instalador de dentro do .zip sem extrair.
-3. Abra a pasta extraída, `PASB-0.8.0`, e dê **dois cliques em `Instalar-PASB.cmd`**.
+3. Abra a pasta extraída, `PASB-0.9.0`, e dê **dois cliques em `Instalar-PASB.cmd`**.
    - Se o Windows mostrar "O Windows protegeu o computador" (SmartScreen), clique em **Mais informações → Executar assim mesmo**. O instalador é um script de texto; você pode abrir o `Instalar-PASB.ps1` no Bloco de Notas e ler o que ele faz.
 4. Espere a mensagem **"Pronto."** e aperte uma tecla para fechar.
 
@@ -58,6 +58,7 @@ A importação de IFC usa as bibliotecas livres xBIM e OpenCascade, sem modifica
 |---|---|
 | **Exportar IFC** | IFC4 georreferenciado (SIRGAS 2000/UTM ou X,Y,Z da obra), com todas as propriedades |
 | **Importar IFC** | Qualquer IFC como sólidos ou malhas, separado por nível com cor por nível ([docs/IFC-IMPORT.md](docs/IFC-IMPORT.md)) |
+| **Numerar itens** | Numeração itemizada: peças iguais recebem a mesma marca, com prévia, filtros e confirmação ([docs/NUMBERING.md](docs/NUMBERING.md)) |
 | **Lista de material** | Insere no desenho as tabelas escolhidas: detalhada, resumo de perfis, parafusos, chumbadores e chapas |
 | **Diagnóstico seleção / modelo** | Leitura técnica dos objetos, somente leitura |
 | **Conector IA** | Liga a ponte para o Claude Code (opcional) |
