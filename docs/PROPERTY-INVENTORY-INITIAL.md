@@ -214,3 +214,5 @@ A etapa só poderá ser considerada concluída após:
 - comparação de propriedades no painel do Advance Steel com os dados extraídos.
 
 Nenhuma implementação do exportador IFC deve começar antes dessa validação.
+
+> **Decisão do desenvolvedor (2026-11-20):** etapa de inventário encerrada com validação **parcial**, para seguir adiante. Validado em execução (ver [DIAGNOSTIC-TEST-LOG.md](DIAGNOSTIC-TEST-LOG.md), Testes 3, 7, 8 e 9): vigas simples e compostas, ligações automáticas, chapas, parafusos, soldas, ligações de chapa e objetos internos não acessíveis. **Não testado:** chumbadores, peças especiais, vigas poligonais/curvas, chapas dobradas, grades, concreto e eixos. Se essas categorias falharem nas etapas seguintes, voltamos ao diagnóstico para corrigir. A cobertura dessas categorias **não** está comprovada.
