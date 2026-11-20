@@ -53,7 +53,7 @@ public static class MaterialList
                 {
                     double? t = Num(e, "PlateBase.Thickness", raw: true), l = Num(e, "PlateBase.Length", raw: true), w = Num(e, "PlateBase.Width", raw: true);
                     string desc = "Chapa #" + Fmt(t, 2) + (l is double ll && w is double ww ? " " + Fmt(Math.Max(ll, ww), 0) + "x" + Fmt(Math.Min(ll, ww), 0) : "");
-                    parts.Add(("Chapa", desc, mat, null, Num(e, "PlateBase.GetWeight"), null, 1, e.SourceHandle ?? "?"));
+                    parts.Add(("Chapa", desc, mat, null, Num(e, "PlateBase.GetWeight"), Num(e, "PlateBase.GetPaintArea"), 1, e.SourceHandle ?? "?"));
                     break;
                 }
                 case "bolts":

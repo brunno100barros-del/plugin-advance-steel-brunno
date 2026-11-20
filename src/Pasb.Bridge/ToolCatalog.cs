@@ -42,10 +42,19 @@ public static class ToolCatalog
                 ["handle"] = new JsonObject { ["type"] = "string", ["description"] = "Handle do objeto, por exemplo \"2F1\"." },
             }, "handle"), true),
         new ToolDef(MaterialList, "Lista de material",
-            "Lê o modelo (somente leitura) e devolve a lista de material agrupada: perfis (comprimento de corte), chapas e parafusos, " +
-            "com quantidade, peso e área de pintura. Vigas compostas não são somadas (são formadas pelas barras simples). " +
-            "Para inserir a tabela no desenho, o usuário usa o botão PASB > Lista de material.",
-            Schema(new JsonObject()), true),
+            "Lê o modelo (somente leitura) e devolve tabelas de lista de material: detailed (perfis, chapas e parafusos por comprimento), " +
+            "profile_summary (um item por perfil: comprimento total, kg/m, kg, pintura), bolts (parafusos por diâmetro x comprimento), " +
+            "anchors (chumbadores), plates (chapas por espessura). Vigas compostas não são somadas (são formadas pelas barras simples). " +
+            "Para inserir as tabelas no desenho, o usuário usa o botão PASB > Lista de material.",
+            Schema(new JsonObject
+            {
+                ["tables"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["items"] = new JsonObject { ["type"] = "string", ["enum"] = Enum("detailed", "profile_summary", "bolts", "anchors", "plates") },
+                    ["description"] = "Tabelas a devolver (padrão: todas).",
+                },
+            }), true),
         new ToolDef(ExportIfc, "Exportar IFC4",
             "Exporta o modelo inteiro para IFC4 com o exportador próprio do PASB (não usa o exportador da Autodesk). Lê o modelo sem alterá-lo " +
             "e grava só o arquivo .ifc e o relatório .report.json. Campos omitidos usam a última configuração da janela 'Exportar IFC'.",

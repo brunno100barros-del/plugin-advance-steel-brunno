@@ -160,6 +160,56 @@ internal static class Program
             True(j["rows"]!.AsArray().Count == 4 && j["excludedCompoundBeams"]![0]!.GetValue<string>() == "4CC", "json");
         });
 
+        Run("tabelas: resumo de perfis, parafusos, chumbadores e chapas por espessura", () =>
+        {
+            static string Bar(string h, string sec, double len, double kgm, double paintMm2) =>
+                "{\"handle\":\"" + h + "\",\"clrType\":\"A.StraightBeam\",\"inheritance\":[\"StraightBeam\",\"Beam\",\"AtomicElement\",\"FilerObject\"],\"properties\":[" +
+                "{\"technicalName\":\"ProfSectionName\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":\"" + sec + "\"}," +
+                "{\"technicalName\":\"Material\",\"declaringType\":\"AtomicElement\",\"status\":\"Read\",\"rawValue\":\"S235JRG2\"}," +
+                "{\"technicalName\":\"GetLength\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":" + len.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetWeightPerMeter\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":" + kgm.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetWeight\",\"declaringType\":\"Beam\",\"argument\":\"1\",\"status\":\"Read\",\"rawValue\":" + (len * kgm).ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetPaintArea\",\"declaringType\":\"Beam\",\"status\":\"Read\",\"rawValue\":" + paintMm2.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}]}";
+            static string Plate(string h, double t, double areaMm2, double grams, double paintMm2) =>
+                "{\"handle\":\"" + h + "\",\"clrType\":\"A.Plate\",\"inheritance\":[\"Plate\",\"PlateBase\",\"AtomicElement\",\"FilerObject\"],\"properties\":[" +
+                "{\"technicalName\":\"Thickness\",\"declaringType\":\"PlateBase\",\"status\":\"Read\",\"rawValue\":" + t.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"Material\",\"declaringType\":\"AtomicElement\",\"status\":\"Read\",\"rawValue\":\"S235JRG2\"}," +
+                "{\"technicalName\":\"GetArea\",\"declaringType\":\"PlateBase\",\"status\":\"Read\",\"rawValue\":" + areaMm2.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetWeight\",\"declaringType\":\"PlateBase\",\"status\":\"Read\",\"rawValue\":" + grams.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"GetPaintArea\",\"declaringType\":\"PlateBase\",\"status\":\"Read\",\"rawValue\":" + paintMm2.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}]}";
+            static string Bolts(string h, string cls, string inh, double d, double l, int n, double grams) =>
+                "{\"handle\":\"" + h + "\",\"clrType\":\"A." + cls + "\",\"inheritance\":[\"" + cls + "\"," + inh + "\"BoltPattern\",\"AtomicElement\",\"FilerObject\"],\"properties\":[" +
+                "{\"technicalName\":\"ScrewDiameter\",\"declaringType\":\"ScrewBoltPattern\",\"status\":\"Read\",\"rawValue\":" + d.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"ScrewLength\",\"declaringType\":\"ScrewBoltPattern\",\"status\":\"Read\",\"rawValue\":" + l.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}," +
+                "{\"technicalName\":\"Grade\",\"declaringType\":\"ScrewBoltPattern\",\"status\":\"Read\",\"rawValue\":\"10.9\"}," +
+                "{\"technicalName\":\"Standard\",\"declaringType\":\"ScrewBoltPattern\",\"status\":\"Read\",\"rawValue\":\"14399-4\"}," +
+                "{\"technicalName\":\"NumberOfScrews\",\"declaringType\":\"BoltPattern\",\"status\":\"Read\",\"rawValue\":" + n + "}," +
+                "{\"technicalName\":\"GetWeight\",\"declaringType\":\"" + (cls == "AnchorPattern" ? "AnchorPattern" : "ScrewBoltPattern") + "\",\"status\":\"Read\",\"rawValue\":" + grams.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}]}";
+            Extraction x = DiagnosticImporter.Import(Run_, new[]
+            {
+                Bar("1", "U100", 1084.5, 10.6, 403500), Bar("2", "U100", 965.5, 10.6, 359200), Bar("3", "U100", 1669, 10.6, 620900), Bar("4", "HEA200", 3000, 42.3, 3420000),
+                Plate("P1", 4.75, 19600, 730.835, 42012), Plate("P2", 4.75, 19600, 730.835, 42012), Plate("P3", 12.5, 40000, 3925, 85000),
+                Bolts("B1", "FinitRectScrewBoltPattern", "\"ScrewBoltPattern\",", 12, 35, 4, 149.44), Bolts("B2", "FinitRectScrewBoltPattern", "\"ScrewBoltPattern\",", 12, 35, 2, 74.72),
+                Bolts("B3", "FinitRectScrewBoltPattern", "\"ScrewBoltPattern\",", 16, 50, 6, 600), Bolts("A1", "AnchorPattern", "\"ScrewBoltPattern\",", 20, 400, 4, 4000),
+            });
+            MaterialTable s = MaterialTables.Build(x, MaterialTableKind.ProfileSummary, "T.dwg");
+            True(s.Rows.Count == 2 && s.Rows[1][1] == "U100" && s.Rows[1][3] == "3", "U100 num único item com 3 barras");
+            True(s.Rows[1][4] == "3,719" && s.Rows[1][5] == "10,60" && s.Rows[1][6] == "39,42", "comprimento total, kg/m e kg: " + string.Join("|", s.Rows[1]));
+            True(s.Rows[1][7] == "1,384" && s.Total![3] == "4" && s.Total[6] == "166,32", "pintura e total: " + string.Join("|", s.Total!));
+            MaterialTable b = MaterialTables.Build(x, MaterialTableKind.Bolts, "T.dwg");
+            True(b.Rows.Count == 2 && b.Rows[0][1] == "M12 x 35" && b.Rows[0][4] == "6" && b.Rows[0][2] == "10.9" && b.Rows[0][3] == "14399-4", "parafusos M12: " + string.Join("|", b.Rows[0]));
+            True(b.Total![4] == "12" && b.Rows.All(r => !r[1].Contains("400")), "total de parafusos sem chumbadores");
+            MaterialTable a = MaterialTables.Build(x, MaterialTableKind.Anchors, "T.dwg");
+            True(a.Rows.Count == 1 && a.Rows[0][4] == "4" && a.Rows[0][5] == "4,000", "chumbadores: " + string.Join("|", a.Rows[0]));
+            MaterialTable p = MaterialTables.Build(x, MaterialTableKind.Plates, "T.dwg");
+            True(p.Rows.Count == 2 && p.Rows[0][1] == "4,75" && p.Rows[0][3] == "2" && p.Rows[0][4] == "0,039" && p.Rows[0][5] == "1,46", "chapas #4,75: " + string.Join("|", p.Rows[0]));
+            True(p.Rows[1][1] == "12,50" && p.Total![3] == "3", "chapas #12,50 e total");
+            True(MaterialTables.Build(DiagnosticImporter.Import(Run_, new[] { Bar("9", "U100", 1000, 10.6, 1) }), MaterialTableKind.Anchors, "T").IsEmpty, "sem chumbadores = tabela vazia");
+            True(MaterialTables.TryParseKind("profile_summary", out var k) && k == MaterialTableKind.ProfileSummary && !MaterialTables.TryParseKind("xyz", out _), "nomes do conector");
+            JsonObject j = MaterialTables.ToJson(s);
+            True(j["columns"]!.AsArray().Count == 8 && j["rows"]!.AsArray().Count == 2, "json da tabela");
+        });
+
         // ------------------------------------------------------------------ ponte local
         await RunAsync("ponte: ida e volta, erro do manipulador e arquivo de descoberta", async () =>
         {

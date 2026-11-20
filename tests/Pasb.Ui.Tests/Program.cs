@@ -80,6 +80,31 @@ internal static class Program
             using var dlg3 = new ExportDialog(s3);
             True(dlg3.Collect(true) && !dlg3.Settings.GeoInPlacement, "desmarcado preservado");
         });
+        Run("janela da lista de material: opções, altura e memória", () =>
+        {
+            string path = Path.Combine(Path.GetTempPath(), "pasb-ml-" + Guid.NewGuid().ToString("N") + ".json");
+            try
+            {
+                var s = new MaterialListSettings { Anchors = false };
+                using (var dlg = new MaterialListDialog(s, 50))
+                {
+                    True(dlg.Collect() && dlg.ChosenTextHeight == 50 && s.TextHeight == 0, "sugestão aceita continua acompanhando a escala");
+                    True(s.Detailed && s.ProfileSummary && !s.Anchors, "marcações preservadas");
+                    TextBox hb = (TextBox)typeof(MaterialListDialog).GetField("_height", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dlg)!;
+                    hb.Text = "35,5";
+                    True(dlg.Collect() && dlg.ChosenTextHeight == 35.5 && s.TextHeight == 35.5, "altura digitada");
+                    hb.Text = "abc";
+                    True(!dlg.Collect() && dlg.LastErrors.Any(e => e.Contains("Altura")), "altura inválida");
+                }
+                s.Save(path);
+                MaterialListSettings r = MaterialListSettings.Load(path);
+                True(!r.Anchors && r.TextHeight == 35.5, "ida e volta");
+                var none = new MaterialListSettings { Detailed = false, ProfileSummary = false, Bolts = false, Anchors = false, Plates = false };
+                using var d2 = new MaterialListDialog(none, 2.5);
+                True(!d2.Collect() && d2.LastErrors.Any(e => e.Contains("ao menos")), "nenhuma tabela marcada");
+            }
+            finally { File.Delete(path); }
+        });
         Run("modo local exige nome do sistema", () =>
         {
             var s = new ExportSettings { Geo = GeoChoice.Local, LocalCrsName = "", OutputPath = @"C:\x\a.ifc" };

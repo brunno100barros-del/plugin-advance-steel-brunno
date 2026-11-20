@@ -164,10 +164,12 @@ public static class Units
         ["Beam.GetWeight(1)"] = ("g", "kg", 1e-3),
         ["PlateBase.GetWeight"] = ("g", "kg", 1e-3),
         ["ScrewBoltPattern.GetWeight"] = ("g", "kg", 1e-3),
+        ["AnchorPattern.GetWeight"] = ("g", "kg", 1e-3),
         ["Beam.GetWeightPerMeter"] = ("kg/m", "kg/m", 1),
         ["AtomicElement.Volume"] = ("mm3", "m3", 1e-9),
         ["PlateBase.GetArea"] = ("mm2", "m2", 1e-6),
         ["Beam.GetPaintArea"] = ("mm2", "m2", 1e-6),
+        ["PlateBase.GetPaintArea"] = ("mm2", "m2", 1e-6),
         ["AtomicElement.SpecificGravity"] = ("kg/mm3", "kg/m3", 1e9),
     };
 

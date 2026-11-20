@@ -12,7 +12,7 @@ Diagnóstico **somente leitura** das propriedades dos objetos do Advance Steel. 
 | `PASB_DIAG_SEL` | Diagnostica os objetos selecionados |
 | `PASB_DIAG_ALL` | Diagnostica todos os objetos do modelo |
 | `PASB_EXPORTAR_IFC` | Exporta o modelo inteiro para IFC4 georreferenciado (versão 0.3.0) |
-| `PASB_LISTA_MATERIAL` | Lê o modelo (sem alterá-lo) e insere no desenho uma **tabela de lista de material** (perfis, chapas, parafusos) no ponto clicado. Único comando que grava no desenho, e só a tabela (Ctrl+Z desfaz). Versão 0.6.0 |
+| `PASB_LISTA_MATERIAL` | Lê o modelo (sem alterá-lo) e abre a janela de opções e insere no desenho as **tabelas de lista de material** escolhidas, lado a lado a partir do ponto clicado: lista detalhada (por comprimento), resumo de perfis (um item por perfil), parafusos, chumbadores e chapas por espessura (0.7.0). Único comando que grava no desenho, e só a tabela (Ctrl+Z desfaz). Versão 0.6.0 |
 | `PASB_CONECTOR_IA` | Liga/desliga o Conector IA (versão 0.5.0): ver [docs/AI-CONNECTOR.md](../../docs/AI-CONNECTOR.md) |
 | `PASB_IA_EXECUTAR` | Interno: executa os pedidos do Conector IA (não digitar) |
 

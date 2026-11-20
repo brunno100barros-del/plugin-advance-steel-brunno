@@ -211,10 +211,21 @@ public sealed class AiConnector
             }
             case ToolCatalog.MaterialList:
             {
+                var kinds = new System.Collections.Generic.List<MaterialTableKind>();
+                if (p["tables"] is JsonArray wanted)
+                {
+                    foreach (JsonNode? w in wanted)
+                    {
+                        if (!MaterialTables.TryParseKind(w?.GetValue<string>(), out MaterialTableKind k))
+                            throw new BridgeException("Tabela desconhecida: " + w + ". Use detailed, profile_summary, bolts, anchors ou plates.");
+                        kinds.Add(k);
+                    }
+                }
+                if (kinds.Count == 0) kinds.AddRange(Enum.GetValues<MaterialTableKind>());
                 var (dir, safe) = Read(ed, "PASB_IA_LISTA_MATERIAL", AllModel);
-                JsonObject r = Pasb.Connector.MaterialList.ToJson(Pasb.Connector.MaterialList.Build(Import(dir, doc)));
-                r["modelUnchanged"] = safe; r["diagnosticFolder"] = dir;
-                return r;
+                Extraction x = Import(dir, doc);
+                var arr = new JsonArray(kinds.Select(k => (JsonNode)MaterialTables.ToJson(MaterialTables.Build(x, k, x.SourceDocument.Name ?? ""))).ToArray());
+                return new JsonObject { ["tables"] = arr, ["modelUnchanged"] = safe, ["diagnosticFolder"] = dir };
             }
             case ToolCatalog.ExportIfc:
             {
