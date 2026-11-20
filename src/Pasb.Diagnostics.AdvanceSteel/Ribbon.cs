@@ -34,7 +34,7 @@ internal static class PasbRibbon
                 _hooked = true;
             }
         }
-        catch (Exception) { }
+        catch (Exception ex) { StartupLog.Write("Aba PASB (Initialize) falhou: " + ex); }
     }
 
     private static void OnItemInitialized(object? sender, RibbonItemEventArgs e)
@@ -44,7 +44,7 @@ internal static class PasbRibbon
         SafeCreate();
     }
 
-    private static void SafeCreate() { try { Create(); } catch (Exception) { } }
+    private static void SafeCreate() { try { Create(); } catch (Exception ex) { StartupLog.Write("Aba PASB (Create) falhou: " + ex); } }
 
     private static void Create()
     {
@@ -68,7 +68,7 @@ internal static class PasbRibbon
     /// <summary>Atualiza o botão "Conector IA" (ligado em verde, desligado em roxo). Nunca lança.</summary>
     public static void SetConnectorState(bool on)
     {
-        try { ApplyConnectorLook(on); } catch (Exception) { }
+        try { ApplyConnectorLook(on); } catch (Exception ex) { StartupLog.Write("Botão Conector IA falhou: " + ex); }
     }
 
     private static void ApplyConnectorLook(bool on)
