@@ -30,6 +30,7 @@ Fora do escopo: exportar IFC, corrigir dados, numerar, criar ou alterar objetos.
 |---|---|
 | `PASB_DIAG_SEL` | Diagnostica só os objetos selecionados. É o comando dos primeiros testes |
 | `PASB_DIAG_ALL` | Diagnostica todos os objetos do modelo, sem filtro de categoria |
+| `PASB_DIAG_VERSION` | Mostra a versão do add-in carregado (seção 9.2) |
 
 Prefixo `PASB` = Plugin Advance Steel Brunno, para não colidir com comandos da Autodesk ou do MCP. Os dois comandos usam `CommandFlags.Modal` e não usam `Redraw`.
 
@@ -205,7 +206,21 @@ Isso segue a regra de [ARCHITECTURE.md](../ARCHITECTURE.md): só o adapter Autod
 | B. `ThirdPartySettings` (oficial do SDK) | XML em `ADVS\ThirdPartySettings` | Mecanismo documentado pela Autodesk para add-ins do Advance Steel | Escreve em `Program Files` (exige administrador) e fica permanente |
 | C. Bundle em `ApplicationPlugins` | Pasta `.bundle` em `%APPDATA%\Autodesk\ApplicationPlugins` | Sem administrador; usado pelo MCP e pelo SteelX | Carrega sempre que o AutoCAD abre |
 
-A escolha é decisão do usuário antes da implementação.
+**Decisão (2026-11-19): opção C, bundle em `%APPDATA%\Autodesk\ApplicationPlugins`**, escolhida pelo desenvolvedor.
+
+### 9.1 Consequências da escolha
+
+- O bundle é carregado pelo autoloader do AutoCAD. Por isso o ponto de entrada usa as interfaces do AutoCAD (`Autodesk.AutoCAD.Runtime.IExtensionApplication` e `CommandMethod`), como o Loader do MCP, e o projeto referencia `accoremgd`, `acdbmgd` e `acmgd` (`Private=False`), além das assemblies do Advance Steel.
+- Pasta: `%APPDATA%\Autodesk\ApplicationPlugins\PASB-Diagnostics.bundle\`, com `PackageContents.xml` e a DLL em `Contents\`. O `PackageContents.xml` restringe o carregamento ao Advance Steel 2027 com `RuntimeRequirements OS="Win64" Platform="ADVS" SeriesMin="R26.0" SeriesMax="R26.0"`, o mesmo formato do bundle do SteelX instalado neste computador. Assim o add-in não carrega no AutoCAD puro nem em outras versões.
+- A instalação e a remoção do bundle são feitas só com autorização explícita do desenvolvedor, e cada uma é registrada.
+
+### 9.2 Cuidados por ficar carregado em toda sessão
+
+1. **Inicialização vazia:** `Initialize()` não lê o desenho, não abre arquivos, não cria janelas e não registra eventos. Só os comandos existem.
+2. **Nada roda sozinho:** nenhum reator, evento ou temporizador. O código só executa quando um comando `PASB_DIAG_*` é digitado.
+3. **Falha isolada:** qualquer exceção dentro de um comando é capturada e mostrada na linha de comando, sem derrubar o Advance Steel.
+4. **Versão visível:** um comando `PASB_DIAG_VERSION` mostra a versão instalada, para saber qual build está carregado.
+5. **Remoção simples:** apagar a pasta `PASB-Diagnostics.bundle` com o Advance Steel fechado. O roteiro de remoção fica no README do projeto.
 
 ## 10. Protocolo do primeiro teste
 
@@ -230,7 +245,7 @@ Só depois de `Portal.dwg` e `CreatePlate.dwg` passarem, o diagnóstico roda no 
 
 ## 12. Decisões pendentes
 
-1. Opção de carregamento (seção 9).
-2. Pasta de saída padrão (`Documentos\PASB-Diagnostics` ou outra).
-3. Prefixo dos comandos (`PASB_`).
-4. Quando fazer o teste isolado de `Save()` + `GetItems()` (seção 5.5).
+1. ~~Opção de carregamento~~: decidido, bundle em AppData (seção 9).
+2. Pasta de saída padrão: adotada a proposta `Documentos\PASB-Diagnostics` (o desenvolvedor não pediu outra).
+3. Prefixo dos comandos: adotado `PASB_` (idem).
+4. Quando fazer o teste isolado de `Save()` + `GetItems()` (seção 5.5): pendente.
