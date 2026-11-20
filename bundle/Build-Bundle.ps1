@@ -25,7 +25,7 @@ New-Item -ItemType Directory -Force (Join-Path $bundle 'Contents') | Out-Null
 
 Copy-Item (Join-Path $PSScriptRoot 'PASB-Diagnostics\PackageContents.xml') $bundle
 # Só as DLLs do projeto; nenhuma DLL da Autodesk vai para o bundle.
-foreach ($name in 'Pasb.Diagnostics.AdvanceSteel.dll', 'Pasb.Diagnostics.Core.dll', 'Pasb.Diagnostics.AdvanceSteel.runtimeconfig.json') {
+foreach ($name in 'Pasb.Diagnostics.AdvanceSteel.dll', 'Pasb.Diagnostics.Core.dll', 'Pasb.Model.dll', 'Pasb.Georeferencing.dll', 'Pasb.IfcExport.dll', 'Pasb.Diagnostics.AdvanceSteel.runtimeconfig.json') {
     Copy-Item (Join-Path $binDir $name) (Join-Path $bundle 'Contents')
 }
 

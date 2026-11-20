@@ -8,8 +8,8 @@
                     AutodeskProduct="AutoCAD"
                     ProductType="Application"
                     Name="PASB Diagnostics"
-                    AppVersion="0.2.3"
-                    FriendlyVersion="0.2.3"
+                    AppVersion="0.3.0"
+                    FriendlyVersion="0.3.0"
                     Description="Diagnostico somente leitura de propriedades do Advance Steel 2027 (Plugin Advance Steel - Brunno)."
                     Author="Brunno Barros"
                     SupportedLocales="Enu,Ptb"
@@ -21,7 +21,7 @@
   <Components Description="Advance Steel 2027">
     <RuntimeRequirements OS="Win64" Platform="ADVS" SeriesMin="R26.0" SeriesMax="R26.0" />
     <ComponentEntry AppName="PASB Diagnostics"
-                    Version="0.2.3"
+                    Version="0.3.0"
                     ModuleName="./Contents/Pasb.Diagnostics.AdvanceSteel.dll"
                     AppDescription="Diagnostico somente leitura para Advance Steel 2027"
                     LoadOnCommandInvocation="True"
@@ -33,6 +33,7 @@
         <Command Global="PASB_DIAG_VERSION" Local="PASB_DIAG_VERSION" />
         <Command Global="PASB_DIAG_SEL"     Local="PASB_DIAG_SEL" />
         <Command Global="PASB_DIAG_ALL"     Local="PASB_DIAG_ALL" />
+        <Command Global="PASB_EXPORTAR_IFC" Local="PASB_EXPORTAR_IFC" />
       </Commands>
     </ComponentEntry>
   </Components>

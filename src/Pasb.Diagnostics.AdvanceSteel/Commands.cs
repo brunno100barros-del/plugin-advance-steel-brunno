@@ -97,7 +97,8 @@ public sealed class Commands
         return (result.ToArray(), nonSteel);
     }
 
-    private static void Run(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect)
+    /// <summary>Lê os objetos e grava a saída do diagnóstico. Retorna a pasta de saída e se o modelo ficou intacto.</summary>
+    internal static (string outDir, bool safe) Run(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect)
     {
         AcDoc doc = AcApp.DocumentManager.MdiActiveDocument;
         DateTime startedLocal = DateTime.Now;
@@ -208,6 +209,7 @@ public sealed class Commands
             if (discard != "ok")
                 ed.WriteMessage($"\nPASB: ATENÇÃO: DiscardAllChanges {discard}. Feche o desenho SEM SALVAR e informe o desenvolvedor.");
             ed.WriteMessage("\n");
+            return (outDir, !changed && discard == "ok");
         }
     }
 

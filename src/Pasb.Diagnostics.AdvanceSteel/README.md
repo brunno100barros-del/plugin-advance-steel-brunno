@@ -11,6 +11,20 @@ Diagnóstico **somente leitura** das propriedades dos objetos do Advance Steel. 
 | `PASB_DIAG_VERSION` | Mostra a versão carregada |
 | `PASB_DIAG_SEL` | Diagnostica os objetos selecionados |
 | `PASB_DIAG_ALL` | Diagnostica todos os objetos do modelo |
+| `PASB_EXPORTAR_IFC` | Exporta o modelo inteiro para IFC4 georreferenciado (versão 0.3.0) |
+
+### `PASB_EXPORTAR_IFC`
+1. Escolha o georreferenciamento: `Sirgas` (SIRGAS 2000 / UTM), `Local` (X, Y, Z da obra) ou `Nenhum`.
+2. Clique no **ponto de controle** no modelo. A UCS atual é convertida para coordenadas globais.
+3. Informe:
+   - **Sirgas:** zona e hemisfério; E, N e cota em metros;
+   - **Local:** nome do sistema; X, Y e Z em metros.
+4. Informe o ângulo de uma destas formas:
+   - `Rotacao`: anti-horária, do eixo X do modelo até o Leste;
+   - `Azimute`: horário, do Norte até o eixo +Y do modelo.
+5. Escolha onde salvar o `.ifc`. O relatório `.report.json` é gravado ao lado.
+
+A leitura usa o mesmo caminho do `PASB_DIAG_ALL`: escrita descartada e `DBMOD` conferido. Se a verificação falhar, a exportação é interrompida. A saída do diagnóstico fica em `Documentos\PASB-Diagnostics\<data-hora>\`, para auditoria.
 
 Saída em `Documentos\PASB-Diagnostics\<data-hora>\`: `objects.jsonl`, `run.json` e `coverage.csv`.
 
