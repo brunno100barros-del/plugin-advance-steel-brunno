@@ -173,6 +173,8 @@ Identificar no pacote extraído:
 
 Registrar nome e versão dos assemblies efetivamente instalados no Advance Steel 2027. Não assumir que a documentação de versões anteriores é idêntica.
 
+> **Atualização 2026-11-19:** SDK 2027 obtido e inspecionado; assemblies e versões registradas. Os XML de documentação cobrem muito pouco das classes centrais, então o inventário completo exige leitura de metadados. Detalhes em [SDK-2027-FINDINGS.md](SDK-2027-FINDINGS.md). Status: documentação localizada; inventário de membros ainda pendente.
+
 ### B. Matriz API × MCP
 
 Para cada classe e propriedade:
@@ -185,6 +187,8 @@ Para cada classe e propriedade:
 - comportamento de erro;
 - estado de validação (documentado, compilado, executado).
 
+> **Atualização 2026-11-19:** matriz preliminar criada em [API-MCP-COVERAGE-MATRIX.md](API-MCP-COVERAGE-MATRIX.md). Status: preliminar, sem validação em modelo real.
+
 ### C. Diagnóstico de leitura
 
 Depois da inspeção, projetar um comando de diagnóstico independente, somente leitura, com:
@@ -195,6 +199,8 @@ Depois da inspeção, projetar um comando de diagnóstico independente, somente 
 - erros individualizados;
 - exportação JSON;
 - execução no contexto/thread exigidos pelo Advance Steel.
+
+> **Atualização 2026-11-19:** plano detalhado em [DIAGNOSTIC-TOOL-PLAN.md](DIAGNOSTIC-TOOL-PLAN.md). Status: planejado, não implementado.
 
 ## 8. Critério de conclusão desta investigação
 
