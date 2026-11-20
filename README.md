@@ -61,7 +61,7 @@ flowchart TD
 | Vigas / perfis | `IfcBeam` |
 | Chapas | `IfcPlate` |
 | Parafusos e chumbadores | `IfcMechanicalFastener` |
-| Soldas | `IfcWeld` |
+| Soldas | `IfcFastener` (WELD); o IFC4 não tem `IfcWeld` |
 | Peças especiais | tipo específico ou `IfcBuildingElementProxy` |
 
 Propriedades sem equivalente IFC padrão vão para **Property Sets customizados**, preservando nome técnico, valor, tipo, unidade e proveniência. Veja [IFC4-MAPPING.md](docs/IFC4-MAPPING.md).
@@ -71,15 +71,15 @@ Propriedades sem equivalente IFC padrão vão para **Property Sets customizados*
 | Etapa | Descrição | Status |
 |:-:|---|:-:|
 | 1 | Fundação do projeto e especificações | ✅ Concluída |
-| 2 | Integração com Advance Steel + MCP | 🟡 Revisão estática feita, validação local pendente |
-| 3 | Modelo neutro e preservação integral | 🟡 Contrato definido, implementação pendente |
-| 4 | Georreferenciamento SIRGAS 2000 / UTM | ⚪ Planejada |
-| 5 | Exportador IFC4 | ⚪ Planejada |
+| 2 | Integração com Advance Steel + inventário | 🟢 Diagnóstico próprio validado em vigas, ligações, chapas, parafusos e soldas; outras categorias pendentes |
+| 3 | Modelo neutro e preservação integral | 🟢 v1 implementada (propriedades + geometria analítica) |
+| 4 | Georreferenciamento (SIRGAS 2000 / UTM ou X,Y,Z + rotação) | 🟢 v1 implementada e testada; validação em visualizador pendente |
+| 5 | Exportador IFC4 | 🟡 v1 gerando IFC dos modelos de teste; validação em visualizador e corpo das vigas pendentes |
 
 Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > [!NOTE]
-> O projeto está em fase de especificação. Ainda não há código executável: nada é dado como "pronto" antes de ser validado em um modelo real do Advance Steel 2027.
+> O projeto já tem código executável (diagnóstico, modelo neutro, georreferenciamento e exportador IFC4 v1). Nada é dado como "pronto" antes de ser validado em modelo real do Advance Steel 2027 e em visualizador IFC independente. Registro dos testes: [docs/DIAGNOSTIC-TEST-LOG.md](docs/DIAGNOSTIC-TEST-LOG.md).
 
 ## 📚 Documentação
 
