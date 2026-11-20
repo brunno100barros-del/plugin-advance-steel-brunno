@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Modelo neutro (docs/NEUTRAL-MODEL.md): sem Autodesk, sem MCP, sem biblioteca IFC. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pasb.Model</RootNamespace>
+  </PropertyGroup>
+
+</Project>
