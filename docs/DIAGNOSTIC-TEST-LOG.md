@@ -136,5 +136,34 @@ Versão 0.2.0: `ASId`, `getPrimaryJoint` e `AssemblyUsedForNumbering` voltam a s
 ### Correção aplicada (versão 0.2.1)
 `getPrimaryJoint` excluído em qualquer modo, registrado como `Unavailable`.
 
+## Teste 7 — 2026-11-20 — versão 0.2.1 (escrita com descarte) — `Portal.dwg` inteiro
+
+**Resultado: SUCESSO. Modelo inteiro lido sem queda e sem alteração.**
+
+### Execução
+- 26 objetos solicitados: 22 gravados, 4 falhas de abertura (sem queda), 0 falhas de leitura de objeto.
+- 2.716 leituras em 1,4 s: 2.365 `Read`, 309 `Empty`, 27 `Null`, 6 `Unavailable` (`getPrimaryJoint` excluído), 9 `ComplexNotSerialized`, **0 `ReadError`**.
+- Segurança: `DBMOD` 5 antes e 5 depois; `DiscardAllChanges` = ok; depois de fechar sem salvar, `Portal-copia.dwg` com **o mesmo SHA-256 do original** e data de 20/05/2025.
+
+### Cobertura por tipo
+| Tipo | Objetos | Leituras |
+|---|---|---|
+| `StraightBeam` | 6 | 1.446 |
+| `CompoundStraightBeam` | 3 | 732 |
+| `UserAutoConstructionObject` | 3 | 255 |
+| `CompoundConstructionObject` | 3 | 255 |
+| `RuleParameterSet` | 7 | 28 |
+
+- A viga composta `4CC`, que derrubou o Teste 5 em `AssemblyUsedForNumbering`, foi lida por completo: **o modo com descarte resolveu esse caso**.
+- `ASId` lido sem queda em todos os objetos neste modo.
+- Falhas de abertura: `30B`, `564`, `566` e `114` (`DatabaseManager.Open` retornou nulo). Tipo ainda não identificado; não derrubaram o AutoCAD.
+- `ComplexNotSerialized`: só `Beam.GetProfType` (`ProfileType` e `ProfileTypeU`).
+
+### Limite deste teste
+`Portal.dwg` só tem vigas e ligações. **Não há chapas, parafusos, chumbadores nem soldas**; essas categorias ainda não foram testadas.
+
+### Conclusão
+A combinação escrita permitida + descarte + lista aprovada sem métodos de escrita + verificação de `DBMOD` foi validada neste modelo: leu tudo o que existia sem alterar o arquivo.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.
