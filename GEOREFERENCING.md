@@ -4,7 +4,23 @@
 
 Permitir que o usuário selecione um ponto identificável no modelo Advance Steel e informe as coordenadas reais desse ponto, além da orientação do modelo em relação ao Norte. O IFC exportado deverá carregar a transformação espacial para ser posicionado corretamente em aplicações BIM compatíveis, sem reposicionamento manual.
 
-## Entradas previstas
+## Modos de posicionamento (requisito atualizado em 2026-11-20)
+
+O usuário escolhe **um de dois modos** no momento da exportação:
+
+| Modo | Entradas | Uso típico |
+|---|---|---|
+| **A. SIRGAS 2000 / UTM** | Ponto de controle local (X, Y, Z); coordenadas E, N, H; zona UTM e hemisfério; ângulo em relação ao Norte | Obra georreferenciada em coordenadas oficiais |
+| **B. Coordenadas X, Y, Z + rotação** | Ponto de controle local (X, Y, Z); coordenadas de destino (X, Y, Z) num sistema qualquer do projeto (topografia local, eixo de obra etc.); ângulo de rotação | Obras com sistema de coordenadas próprio, sem datum oficial |
+
+Nos dois modos a transformação matemática é a mesma (translação + rotação no plano + elevação + conversão de unidades). Muda apenas a declaração do sistema de destino no IFC:
+
+- **Modo A:** `IfcProjectedCRS` com o código EPSG correspondente à zona (SIRGAS 2000 / UTM, por exemplo EPSG:31982 a 31985 no hemisfério sul) + `IfcMapConversion`.
+- **Modo B:** `IfcMapConversion` com um `IfcProjectedCRS` descritivo, sem código EPSG (nome e descrição informados pelo usuário, por exemplo "Sistema local da obra"). A forma exata de declarar um CRS sem EPSG será validada em visualizadores independentes antes de ser considerada pronta.
+
+O modo e todos os parâmetros vão para o relatório de exportação.
+
+## Entradas previstas (modo A; o modo B usa as mesmas, sem datum/zona)
 
 - Ponto de controle no sistema local do modelo (X, Y, Z).
 - Coordenadas projetadas correspondentes (Easting, Northing, Height).
