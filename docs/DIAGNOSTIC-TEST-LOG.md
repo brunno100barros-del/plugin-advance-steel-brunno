@@ -198,5 +198,27 @@ DWG criado pelo desenvolvedor para teste (sem dados de cliente): uma chapa com 4
 ### Ainda não testado
 Chumbadores, peças especiais, vigas poligonais/curvas, chapas dobradas, grades, concreto e eixos.
 
+## Teste 9 — 2026-11-20 — versão 0.2.2 — identificação dos objetos que não abrem
+
+**Resultado: SUCESSO. Os 9 objetos que `DatabaseManager.Open` não abre foram identificados sem abri-los. Os dois DWGs não foram alterados.**
+
+### Execução
+`PASB_DIAG_ALL` em `Portal-copia.dwg` (22 gravados, 4 sem abrir) e no DWG de teste do desenvolvedor (10 gravados, 5 sem abrir). `dbmodChanged: false` e `discardAllChanges: ok` nos dois. SHA-256 dos dois arquivos igual ao anotado antes do teste.
+
+### Identificação
+| Handle | Modelo | Classe AutoCAD (`ObjectClass`) | `eObjectType` correspondente |
+|---|---|---|---|
+| `83`, `114` | ambos | `AstCounter` | nenhum |
+| `CA` | teste | `AstMainPart` | nenhum |
+| `CC`, `CE`, `CF` | teste | `AstEqualPartPosNum` | nenhum |
+| `30B` | Portal | `AstExternalStructural` | nenhum |
+| `564` | Portal | `AstConobjTransferCluster` | nenhum |
+| `566` | Portal | `AstDwgTableRow` | nenhum |
+
+### Interpretação
+- Nenhum desses objetos corresponde a algum dos 97 valores de `FilerObject.eObjectType`, e a API .NET não os abre. São objetos internos do Advance Steel sem classe .NET pública: **não acessíveis pelos meios identificados (N/A)**.
+- Pelo nome, tratam de contadores (`AstCounter`), controle de numeração e peças principais (`AstMainPart`, `AstEqualPartPosNum`), transferência de dados de ligações (`AstConobjTransferCluster`), lista de desenhos (`AstDwgTableRow`) e um elemento estrutural externo (`AstExternalStructural`).
+- **Impacto no IFC:** o resultado da numeração já é lido nas peças (`SinglePartNumber`, `MainPartNumber`, `IsMainPart`, `GetSinglePartPositionNumber` etc.). O `AstExternalStructural` `30B` é o objeto de entrada (`Drivers`) da ligação `308`; a relação fica registrada pelo handle, mas o conteúdo dele não é acessível.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.

@@ -73,6 +73,7 @@ Uma linha "MCP" comprova que o membro existe na API, mas não que o valor retorn
 | Parâmetros da ligação | IJoint / IFiler | Todos os itens gravados pela regra | `Save()` → `IFiler`, depois `GetItems()` → `Dictionary<string, object>` | INV | Caminho candidato. Semântica de `Save()` e efeitos colaterais desconhecidos; testar só em cópia do DWG |
 | Parâmetros da ligação | (binário) | Parâmetros e sobrescritas | `GetJointParam`, `GetOvrdJointParam`, `getFilerData` | N/A | Não são membros públicos; não serão usados |
 | Concreto | Wall, Slab, FootingIsolated, ConcreteBeam | Tudo além de handle, tipo e layer | — | INV | O MCP só classifica (`Objects.cs:39, 54-55`) |
+| Objetos internos | `AstCounter`, `AstMainPart`, `AstEqualPartPosNum`, `AstExternalStructural`, `AstConobjTransferCluster`, `AstDwgTableRow` | Conteúdo | `DatabaseManager.Open` retorna nulo; sem `eObjectType` correspondente | N/A | Identificados pela classe AutoCAD sem abrir o objeto (Teste 9, [DIAGNOSTIC-TEST-LOG.md](DIAGNOSTIC-TEST-LOG.md)). Numeração já lida nas peças |
 | Eixos e pontos | Grid, UserDefinedPoint | Tudo além de handle, tipo e layer | — | INV | `Objects.cs:42-43` |
 | Descoberta | Todas | Membros públicos declarados | `advsteel_api_help` (reflexão em runtime) | MCP | `ScriptHandlers.cs:235-285`; só membros declarados no tipo, sem herdados |
 | Demais | Todas | Membros públicos herdados e específicos | leitura de metadados | API | 474 tipos e 5.548 membros catalogados por `tools/ApiInventory`; detalhamento por classe ainda a incorporar nesta matriz |
