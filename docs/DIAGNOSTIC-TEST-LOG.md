@@ -104,5 +104,22 @@ A linha seguinte (`GetUniqueId`) nunca foi gravada: a queda ocorreu durante a le
 ### Correção aplicada (versão 0.1.3)
 `getPrimaryJoint` removido dos métodos aprovados e registrado como `Unavailable`, com o motivo, em cada ligação.
 
+## Teste 5 — 2026-11-20 — versão 0.1.3 — `Portal.dwg` inteiro (`PASB_DIAG_ALL`)
+
+**Resultado: FALHA parcial. 6 de 26 objetos gravados; queda numa viga composta.**
+
+### Evidência
+- Lidos e gravados: ligações `305`, `308` e `16A` (85 leituras cada), `RuleParameterSet` `307` e `30D`, e uma falha de abertura registrada sem queda (`30B`: `DatabaseManager.Open` retornou nulo).
+- A ligação `308` ("createbeams") tem `Drivers` = `30B` e `CreatedObjects`/`Drivens` = `4CC`, `4D7`, `4E2`, `4ED`...; parâmetros em `RuleParameterSet` `507`.
+- Queda no objeto `4CC` (`CompoundStraightBeam`), no getter `AtomicElement.AssemblyUsedForNumbering`, que **funcionou** no `StraightBeam` do Teste 3.
+
+### Interpretação
+As escritas internas dependem do tipo do objeto, não só do membro. Excluir membro a membro faria perder a leitura também nos objetos em que ela funciona.
+
+### Decisão (desenvolvedor)
+Passar a **transação com escrita permitida e descarte**: `DocumentAccess(doc, bReadOnly: false)`, nunca `Commit()`, `DiscardAllChanges()` no final, como o modo dry-run do AdvancedSteelMCP (`Infrastructure.cs:234-244`). Mantidos: nenhum setter ou método de escrita na lista aprovada, verificação de `DBMOD`, testes só em cópias, aviso na tela se o descarte falhar. `run.json` e cada objeto registram `transactionMode: "write-discarded"`, porque valores criados sob demanda (como IDs) podem não existir no modelo salvo.
+
+Versão 0.2.0: `ASId`, `getPrimaryJoint` e `AssemblyUsedForNumbering` voltam a ser lidos nesse modo; continuam excluídos se o modo somente leitura for reativado.
+
 ### Observação não relacionada
 Os eventos do Windows mostram a desinstalação do "AutoCAD 2026 - English" às 22:58, antes do teste, com falha no componente "ACAD Private", e um travamento do `acad.exe` no mesmo horário. Não tem relação com o add-in, que só carrega no Advance Steel 2027.

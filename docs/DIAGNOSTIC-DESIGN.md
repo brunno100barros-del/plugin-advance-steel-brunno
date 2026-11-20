@@ -24,6 +24,8 @@ Fora do escopo: exportar IFC, corrigir dados, numerar, criar ou alterar objetos.
 
 `DatabaseManager.Open` aceita `eOpenMode` (`kNotOpened`, `kNormal`, `kToShadow`), mas **não há modo "somente leitura" por objeto**. A garantia de leitura vem de três barreiras combinadas: transação em modo leitura, nenhuma chamada de escrita (seção 5.4) e `DiscardAllChanges()` ao final.
 
+> **Revisão após os Testes 1-5 (versão 0.2.0):** algumas leituras da API gravam valores internamente (por exemplo, `ASId`, `getPrimaryJoint`, `AssemblyUsedForNumbering` em vigas compostas). Numa transação somente leitura isso derruba o AutoCAD (`eNotOpenForWrite`), e a falha depende do tipo do objeto. Por decisão do desenvolvedor, a transação passou a ser aberta com **escrita permitida e descarte**: `DocumentAccess(doc, bReadOnly: false)`, nunca `Commit()` e `DiscardAllChanges()` no final, como o modo dry-run do AdvancedSteelMCP. As outras barreiras continuam: lista aprovada sem métodos de escrita, `DBMOD` verificado, aviso na tela se o descarte falhar e testes só em cópias. O modo fica registrado como `transactionMode` em `run.json` e em cada objeto. A constante `Commands.WriteWithDiscard` permite voltar ao modo somente leitura. Ver [DIAGNOSTIC-TEST-LOG.md](DIAGNOSTIC-TEST-LOG.md).
+
 ## 3. Comandos
 
 | Comando | O que faz |

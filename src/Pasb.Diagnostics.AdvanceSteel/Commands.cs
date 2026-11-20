@@ -57,6 +57,11 @@ public sealed class Commands
         }));
     }
 
+    /// <summary>true: transação com escrita permitida e DiscardAllChanges() no final; false: somente leitura.</summary>
+    internal static readonly bool WriteWithDiscard = true;
+
+    internal static readonly string TransactionMode = WriteWithDiscard ? "write-discarded" : "read-only";
+
     private static string DiagnosticVersion =>
         typeof(Commands).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? typeof(Commands).Assembly.GetName().Version?.ToString() ?? "?";
@@ -108,6 +113,8 @@ public sealed class Commands
             ["savedToDisk"] = doc.IsNamedDrawing,
             ["insunits"] = doc.Database.Insunits.ToString(),
             ["dbmodBefore"] = dbmodBefore?.ToString(),
+            // Valores criados sob demanda durante a leitura (por exemplo, IDs) podem não existir no modelo salvo.
+            ["transactionMode"] = TransactionMode,
         };
 
         string outDir = DiagnosticOutput.DefaultDirectory(startedLocal);
@@ -119,9 +126,13 @@ public sealed class Commands
         {
             trace.Write($"inicio {command} versao {DiagnosticVersion} DBMOD={dbmodBefore}");
             using (doc.LockDocument())
-            using (var access = new DocumentAccess(null, true))   // somente leitura; nunca há Commit()
+            // Modo "gravação com descarte" (decisão do desenvolvedor após os Testes 1-5, docs/DIAGNOSTIC-TEST-LOG.md):
+            // algumas leituras gravam valores internamente e derrubam o AutoCAD numa transação somente leitura.
+            // A transação permite escrita, mas NUNCA há Commit(): DiscardAllChanges() desfaz tudo no finally.
+            // Mesma técnica do modo dry-run do AdvancedSteelMCP (Infrastructure.cs:234-244).
+            using (var access = new DocumentAccess(null, !WriteWithDiscard))
             {
-                trace.Write("DocumentAccess(readOnly) aberto");
+                trace.Write($"DocumentAccess aberto (modo {TransactionMode})");
                 try
                 {
                     trace.Write("coletando ids");
@@ -158,7 +169,7 @@ public sealed class Commands
                 }
                 finally
                 {
-                    // Terceira barreira: descarta qualquer alteração acidental (seção 2).
+                    // Descarta tudo o que as leituras gravaram internamente. Nunca há Commit().
                     trace.Write("DiscardAllChanges");
                     try { access.DiscardAllChanges(); discard = "ok"; }
                     catch (System.Exception ex) { discard = "falhou: " + ex.GetType().Name + ": " + ex.Message; }
@@ -181,6 +192,8 @@ public sealed class Commands
             ed.WriteMessage($"\nPASB: saída em {outDir}");
             if (changed)
                 ed.WriteMessage($"\nPASB: ATENÇÃO: DBMOD mudou de {dbmodBefore} para {dbmodAfter}. Feche o desenho SEM SALVAR e informe o desenvolvedor.");
+            if (discard != "ok")
+                ed.WriteMessage($"\nPASB: ATENÇÃO: DiscardAllChanges {discard}. Feche o desenho SEM SALVAR e informe o desenvolvedor.");
             ed.WriteMessage("\n");
         }
     }

@@ -15,19 +15,24 @@ namespace Pasb.Diagnostics.AdvanceSteel;
 internal static class ObjectReader
 {
     /// <summary>
-    /// Getters excluídos da leitura automática, por custo ou efeito colateral comprovado.
-    /// Começa vazia de propósito; cada inclusão exige evidência registrada em docs/.
+    /// Getters que gravam internamente e derrubam o AutoCAD numa transação SOMENTE LEITURA.
+    /// Só são excluídos quando Commands.WriteWithDiscard = false; no modo com descarte são lidos normalmente.
+    /// Cada inclusão exige evidência registrada em docs/DIAGNOSTIC-TEST-LOG.md.
     /// </summary>
-    private static readonly HashSet<string> ExcludedGetters = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> ReadOnlyCrashGetters = new(StringComparer.Ordinal)
     {
-        // Teste 2 (docs/DIAGNOSTIC-TEST-LOG.md): ler ASId de um StraightBeam dentro de transação somente leitura
-        // derrubou o AutoCAD com eNotOpenForWrite (0xE0000001). Indício de que o ID é criado sob demanda.
+        // Teste 2: ASId de um StraightBeam → eNotOpenForWrite (0xE0000001). Indício de ID criado sob demanda.
         "FilerObject.ASId",
+        // Teste 5: AssemblyUsedForNumbering de um CompoundStraightBeam → eNotOpenForWrite (funcionou num StraightBeam).
+        "AtomicElement.AssemblyUsedForNumbering",
     };
+
+    private static HashSet<string> ExcludedGetters =>
+        Commands.WriteWithDiscard ? new HashSet<string>(StringComparer.Ordinal) : ReadOnlyCrashGetters;
 
     /// <summary>Motivo registrado no JSON para cada getter excluído.</summary>
     private const string ExclusionReason =
-        "Excluído pela lista revisada: a leitura derrubou o AutoCAD (eNotOpenForWrite) no Teste 2; ver docs/DIAGNOSTIC-TEST-LOG.md.";
+        "Excluído no modo somente leitura: a leitura derrubou o AutoCAD (eNotOpenForWrite); ver docs/DIAGNOSTIC-TEST-LOG.md.";
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> GetterCache = new();
 
@@ -45,8 +50,14 @@ internal static class ObjectReader
         };
         trace("identidade: Handle");
         TryHeader(header, "handle", () => JsonValue.Create(o.Handle));
-        // ASId não é lido: ver ExcludedGetters.
-        header["asIdExcluded"] = ExclusionReason;
+        header["transactionMode"] = Commands.TransactionMode;
+        if (ExcludedGetters.Contains("FilerObject.ASId"))
+            header["asIdExcluded"] = ExclusionReason;
+        else
+        {
+            trace("identidade: ASId");
+            TryHeader(header, "asId", () => JsonValue.Create(o.ASId));
+        }
         trace("identidade: GetUniqueId");
         TryHeader(header, "uniqueId", () => JsonValue.Create(o.GetUniqueId().ToString("D")));
         trace("identidade: Type");

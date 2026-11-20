@@ -241,10 +241,13 @@ internal static class ApprovedMethods
     private static void JointMethods(UserAutoConstructionObject j, RecordBuilder b)
     {
         const string d = "UserAutoConstructionObject";
-        // Teste 4 (docs/DIAGNOSTIC-TEST-LOG.md): getPrimaryJoint derrubou o AutoCAD (eNotOpenForWrite)
-        // na ligação 305 do Portal.dwg. Removido da lista aprovada; registrado como indisponível.
-        b.Unavailable("getPrimaryJoint", d, ReadSource.Method, typeof(FilerObject),
-            "Excluído: a chamada derrubou o AutoCAD (eNotOpenForWrite) no Teste 4; ver docs/DIAGNOSTIC-TEST-LOG.md.");
+        // Teste 4 (docs/DIAGNOSTIC-TEST-LOG.md): getPrimaryJoint derrubou o AutoCAD (eNotOpenForWrite) numa
+        // transação somente leitura. Só é chamado no modo com descarte.
+        if (Commands.WriteWithDiscard)
+            M(b, d, "getPrimaryJoint", null, typeof(FilerObject), () => j.getPrimaryJoint());
+        else
+            b.Unavailable("getPrimaryJoint", d, ReadSource.Method, typeof(FilerObject),
+                "Excluído no modo somente leitura: a chamada derrubou o AutoCAD (eNotOpenForWrite) no Teste 4.");
         M(b, d, "isPrimaryOrPartOfPrimaryJoint", null, typeof(bool), () => j.isPrimaryOrPartOfPrimaryJoint());
         M(b, d, "isSecondaryOrPartOfSecondaryJoint", null, typeof(bool), () => j.isSecondaryOrPartOfSecondaryJoint());
     }
