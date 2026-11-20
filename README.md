@@ -21,6 +21,10 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 
 ---
 
+## ⬇️ Instalar
+
+Baixe o pacote pronto em [`release/`](release/) e siga o passo a passo em **[INSTALACAO.md](INSTALACAO.md)**. Não precisa compilar nem de administrador.
+
 ## ✨ Visão geral
 
 Exportar um modelo de estrutura metálica para IFC costuma significar escolher entre duas perdas: **dados** (propriedades que somem no caminho) ou **posição** (o modelo chega na origem e precisa ser reposicionado à mão). Este projeto existe para eliminar as duas.
@@ -87,6 +91,7 @@ Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADM
 
 | Documento | Conteúdo |
 |---|---|
+| [INSTALACAO.md](INSTALACAO.md) | Como instalar o plugin em qualquer computador (pacote pronto) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Módulos, fluxo de dados e responsabilidades |
 | [MCP-INTEGRATION.md](MCP-INTEGRATION.md) | Diretrizes de integração com o AdvancedSteelMCP |
 | [MCP-REVIEW.md](MCP-REVIEW.md) | Auditoria do código-fonte do MCP |

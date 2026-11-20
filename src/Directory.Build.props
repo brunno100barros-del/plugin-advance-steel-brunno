@@ -10,5 +10,9 @@
     <Version>0.7.1</Version>
     <Authors>Brunno Barros</Authors>
     <Product>Plugin Advance Steel - Brunno</Product>
+    <!-- Não gravar caminhos da máquina de quem compila nas DLLs publicadas (repositório público). -->
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/pasb/$(MSBuildProjectName)</PathMap>
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
   </PropertyGroup>
 </Project>
