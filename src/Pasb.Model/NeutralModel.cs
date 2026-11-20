@@ -57,6 +57,8 @@ public sealed class NeutralElement
     public string? IfcGlobalId { get; set; }
     public List<NeutralProperty> Properties { get; } = new();
     public List<Relationship> Relationships { get; } = new();
+    /// <summary>Geometria analítica extraída das propriedades (nula quando não há dados suficientes).</summary>
+    public NeutralGeometry? Geometry { get; set; }
     public ElementStatus Status { get; set; } = ElementStatus.Valid;
     public List<string> ValidationMessages { get; } = new();
     /// <summary>Identificação de objetos que não puderam ser abertos (classe AutoCAD, tipos AS).</summary>

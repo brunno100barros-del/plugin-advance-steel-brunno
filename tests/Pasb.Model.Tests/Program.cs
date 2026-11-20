@@ -63,5 +63,27 @@ Run("sem INSUNITS em mm: comprimento sem normalização", () =>
 });
 Run("JSON serializa enums como texto", () => Eq(true, NeutralModelJson.Serialize(x).Contains("\"Status\": \"Unsupported\""), "enum"));
 
+const string PlateJson = """{"handle":"C7","clrType":"Autodesk.AdvanceSteel.Modelling.Plate","inheritance":["Plate","PlateBase","MainAlias","AtomicElement","ActiveConstructionElement","ConstructionElement","FilerObject"],"properties":[{"technicalName":"GetBaseContourPolygon","declaringType":"PlateBase","argument":"0","source":"method","dataType":"P","status":"Read","rawValue":[[0,0,0],[196,0,0],[196,100,0],[0,100,0]]},{"technicalName":"PlateNormal","declaringType":"PlateBase","source":"getter","dataType":"V","status":"Read","rawValue":[0,0,1]},{"technicalName":"Thickness","declaringType":"PlateBase","source":"getter","dataType":"System.Double","status":"Read","rawValue":4.75}]}""";
+const string BeamGeo = """{"handle":"52A","clrType":"Autodesk.AdvanceSteel.Modelling.StraightBeam","inheritance":["StraightBeam","Beam","AtomicElement","FilerObject"],"properties":[{"technicalName":"GetPointAtStart","declaringType":"Beam","source":"method","dataType":"P","status":"Read","rawValue":[0,0,950]},{"technicalName":"GetPointAtEnd","declaringType":"Beam","source":"method","dataType":"P","status":"Read","rawValue":[1500,0,950]},{"technicalName":"ProfSectionName","declaringType":"Beam","source":"getter","dataType":"System.String","status":"Read","rawValue":"U100"},{"technicalName":"PhysCSStart","declaringType":"Beam","source":"getter","dataType":"M","status":"Read","rawValue":[[-1,0,0,0],[0,0,-1,0],[0,-1,0,950],[0,0,0,1]]}]}""";
+Extraction gx = DiagnosticImporter.Import(RunMm, new[] { PlateJson, BeamGeo });
+
+Run("geometria da chapa: contorno, normal e espessura", () =>
+{
+    NeutralGeometry g = gx.Elements[0].Geometry!;
+    Eq("contour", g.Kind, "tipo"); Eq(4, g.Points.Count, "vértices");
+    Eq(4.75, g.Dimensions["thickness"], "espessura"); Eq(1.0, g.Normal![2], "normal z"); Eq(0.001, g.ModelUnitToMeters, "fator");
+});
+Run("geometria da viga: eixo, perfil e sistema de coordenadas", () =>
+{
+    NeutralGeometry g = gx.Elements[1].Geometry!;
+    Eq("axis", g.Kind, "tipo"); Eq(1500.0, g.Points[1][0], "fim x"); Eq("U100", g.Descriptors["profileName"], "perfil");
+    Eq(950.0, g.CoordinateSystem![2][3], "translação z"); Eq(true, g.Limitations.Count > 0, "limitação registrada");
+});
+Run("sem dados geométricos: geometria nula e aviso", () =>
+{
+    Eq(null, x.Elements[0].Geometry, "geometria");
+    Eq(true, x.Elements[0].ValidationMessages.Any(m => m.Contains("geometria")), "aviso");
+});
+
 Console.WriteLine($"{passed} passaram, {failed} falharam");
 return failed == 0 ? 0 : 1;

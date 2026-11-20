@@ -83,6 +83,9 @@ public static class DiagnosticImporter
                 AddInventory(x, e.Category, prop.Key);
             }
 
+            e.Geometry = GeometryExtractor.Extract(e, millimeters ? 1e-3 : null);
+            if (e.Geometry is null) e.ValidationMessages.Add("Sem geometria extraível das propriedades lidas.");
+
             int errors = e.Properties.Count(p => p.Status == PropertyStatus.ReadError);
             int pending = e.Properties.Count(p => p.Status is PropertyStatus.Unavailable or PropertyStatus.ComplexNotSerialized);
             if (errors > 0) { e.Status = ElementStatus.Partial; e.ValidationMessages.Add($"{errors} leitura(s) com erro."); }

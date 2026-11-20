@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Text.Json.Nodes;
 using Autodesk.AdvanceSteel.CADAccess;
@@ -61,6 +62,11 @@ internal static class AsValueSerializer
                 return null; // tratado pelo núcleo
         }
 
+        // Objetos do catálogo de perfis (ex.: ProfileType, ProfileTypeU): não pertencem ao desenho.
+        // Serializa os getters públicos simples (números, textos, enums, geometria), um nível, para obter as dimensões da seção.
+        if (depth == 0 && value.GetType().Namespace?.StartsWith("Autodesk.AdvanceSteel.Profiles", StringComparison.Ordinal) == true)
+            return CatalogObject(value);
+
         // Coleções de tipos conhecidos (ObjectId, FilerObject, Point3d...). Limite de profundidade evita recursão.
         if (depth < 2 && value is IEnumerable seq)
         {
@@ -82,6 +88,29 @@ internal static class AsValueSerializer
     }
 
     private static JsonNode N(double d) => ValueSerializer.Number(d);
+
+    private static JsonObject CatalogObject(object value)
+    {
+        var j = new JsonObject { ["clrType"] = value.GetType().FullName };
+        var props = new JsonObject();
+        foreach (var p in value.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+        {
+            if (!p.CanRead || p.GetIndexParameters().Length > 0 || p.PropertyType.IsPointer) continue;
+            try
+            {
+                object? v = p.GetValue(value);
+                if (ValueSerializer.TrySerialize(v, out JsonNode? basic, out _)) props[p.Name] = basic;
+                else if (v is not null && Convert(v, depth: 1) is { } geo) props[p.Name] = geo;
+            }
+            catch (Exception ex)
+            {
+                Exception inner = ex is System.Reflection.TargetInvocationException { InnerException: { } ie } ? ie : ex;
+                props[p.Name] = new JsonObject { ["error"] = inner.GetType().Name + ": " + inner.Message };
+            }
+        }
+        j["properties"] = props;
+        return j;
+    }
 
     private static JsonNode Id(AsId id)
     {
