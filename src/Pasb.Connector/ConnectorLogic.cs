@@ -118,7 +118,7 @@ public static class ConnectorLogic
         var known = new HashSet<string>(StringComparer.Ordinal)
         {
             "output_path", "overwrite", "project_name", "site_name", "building_name", "object_groups", "georeference", "utm_zone",
-            "hemisphere", "local_crs_name", "base_point_model", "target_point", "target_unit", "angle_mode", "angle_degrees",
+            "hemisphere", "local_crs_name", "base_point_model", "target_point", "target_unit", "angle_mode", "angle_degrees", "apply_to_placement",
         };
         var errors = p.Select(kv => kv.Key).Where(k => !known.Contains(k)).Select(k => $"Parâmetro desconhecido: {k}.").ToList();
 
@@ -173,6 +173,7 @@ public static class ConnectorLogic
                 case "azimuth": s.AngleMode = AngleInput.Azimuth; break;
                 default: errors.Add("angle_mode deve ser rotation ou azimuth."); break;
             }
+            if (p["apply_to_placement"] is { } ap) s.GeoInPlacement = ap.GetValue<bool>();
             if (p["angle_degrees"] is { } a)
             {
                 s.AngleDegrees = a.GetValue<double>();

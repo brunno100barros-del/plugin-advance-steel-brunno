@@ -48,6 +48,9 @@ public sealed class ExportSettings
     /// <summary>Fator da unidade das coordenadas reais para metros.</summary>
     public double TargetUnitToMeters => TargetUnit == TargetUnit.Millimeters ? 0.001 : 1.0;
 
+    /// <summary>true: coordenadas reais aplicadas na posição do IfcSite (aparece no lugar certo em qualquer visualizador).</summary>
+    public bool GeoInPlacement { get; set; } = true;
+
     public AngleInput AngleMode { get; set; } = AngleInput.Rotation;
     public double AngleDegrees { get; set; }
 
@@ -82,6 +85,7 @@ public sealed class ExportSettings
         {
             SiteName = SiteName,
             BuildingName = BuildingName,
+            GeoInPlacement = GeoInPlacement,
             IncludedGroups = Groups.Where(kv => kv.Value).Select(kv => kv.Key).ToHashSet(StringComparer.Ordinal),
         };
 

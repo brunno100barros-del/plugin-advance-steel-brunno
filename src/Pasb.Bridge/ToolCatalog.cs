@@ -64,6 +64,7 @@ public static class ToolCatalog
                 ["target_unit"] = new JsonObject { ["type"] = "string", ["enum"] = Enum("m", "mm"), ["description"] = "Unidade de target_point (padrão: a da janela)." },
                 ["angle_mode"] = new JsonObject { ["type"] = "string", ["enum"] = Enum("rotation", "azimuth"), ["description"] = "rotation: anti-horária do X do modelo até o Leste; azimuth: horário do Norte até o +Y do modelo." },
                 ["angle_degrees"] = new JsonObject { ["type"] = "number" },
+                ["apply_to_placement"] = new JsonObject { ["type"] = "boolean", ["description"] = "true (recomendado): coordenadas reais aplicadas na posição do IfcSite; false: só IfcMapConversion." },
             }, "output_path"), false),
     };
 

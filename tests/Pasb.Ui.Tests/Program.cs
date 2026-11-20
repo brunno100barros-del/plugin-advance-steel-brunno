@@ -75,6 +75,10 @@ internal static class Program
             ComboBox unit = (ComboBox)typeof(ExportDialog).GetField("_unit", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(dlg)!;
             unit.SelectedIndex = 0;
             True(dlg.Collect(true) && dlg.Settings.TargetUnit == TargetUnit.Meters, "troca para metros");
+            True(dlg.Settings.GeoInPlacement && dlg.Settings.ToExportOptions(0.001).GeoInPlacement, "posição aplicada por padrão");
+            var s3 = new ExportSettings { Geo = GeoChoice.Local, LocalCrsName = "L", GeoInPlacement = false, OutputPath = @"C:\x\u.ifc" };
+            using var dlg3 = new ExportDialog(s3);
+            True(dlg3.Collect(true) && !dlg3.Settings.GeoInPlacement, "desmarcado preservado");
         });
         Run("modo local exige nome do sistema", () =>
         {

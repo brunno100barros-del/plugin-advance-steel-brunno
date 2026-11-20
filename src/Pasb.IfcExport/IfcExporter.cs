@@ -31,6 +31,12 @@ public sealed record ExportOptions(string ProjectName = "Projeto Advance Steel",
     public string StoreyName { get; init; } = "Estrutura";
     /// <summary>Grupos de objetos a exportar (ver <see cref="ObjectGroups"/>); nulo = todos.</summary>
     public IReadOnlySet<string>? IncludedGroups { get; init; }
+    /// <summary>
+    /// true (padrão): o deslocamento e a rotação vão na posição do IfcSite (as coordenadas do IFC já são as reais; todo visualizador mostra
+    /// no lugar certo) e o IfcMapConversion fica neutro. false: posições do modelo e georreferência só no IfcMapConversion
+    /// (exige visualizador que leia IfcMapConversion).
+    /// </summary>
+    public bool GeoInPlacement { get; init; } = true;
 }
 
 /// <summary>Grupos de objetos exibidos na janela de exportação e sua relação com as categorias do modelo neutro.</summary>
@@ -80,7 +86,8 @@ public static class IfcExporter
         int units = w.Add("IfcUnitAssignment", Refs(new[] { metre, area, volume, kg, rad }));
         int project = w.Add("IfcProject", Str(Gid("project")), Null, Str(opt.ProjectName), Null, Null, Null, Null, "(" + Ref(ctx) + ")", Ref(units));
 
-        // ---------- Georreferenciamento (IfcProjectedCRS + IfcMapConversion)
+        // ---------- Georreferenciamento (IfcProjectedCRS + IfcMapConversion e/ou posição do IfcSite)
+        int sitePlacement = wcs;
         if (opt.Geo is { } geo)
         {
             List<string> errors = Georeferencing.Georeference.Validate(geo);
@@ -88,11 +95,23 @@ public static class IfcExporter
             ProjectedCrs crs = Georeferencing.Georeference.ToIfcProjectedCrs(geo);
             MapConversion mc = Georeferencing.Georeference.ToIfcMapConversion(geo);
             int crsId = w.Add("IfcProjectedCRS", Str(crs.Name), Str(crs.Description), Str(crs.GeodeticDatum), Null, Str(crs.MapProjection), Str(crs.MapZone), Ref(metre));
-            w.Add("IfcMapConversion", Ref(ctx), Ref(crsId), Real(mc.Eastings), Real(mc.Northings), Real(mc.OrthogonalHeight),
-                Real(mc.XAxisAbscissa), Real(mc.XAxisOrdinate), Real(mc.Scale));
+            if (opt.GeoInPlacement)
+            {
+                // Site = origem do modelo levada às coordenadas reais, com o eixo X girado. Coordenadas do projeto = coordenadas do mapa,
+                // por isso o IfcMapConversion é neutro (evita aplicar o deslocamento duas vezes).
+                sitePlacement = w.Add("IfcAxis2Placement3D", Ref(w.Add("IfcCartesianPoint", Point(mc.Eastings, mc.Northings, mc.OrthogonalHeight))),
+                    Ref(zAxis), Ref(w.Add("IfcDirection", Point(mc.XAxisAbscissa, mc.XAxisOrdinate, 0))));
+                w.Add("IfcMapConversion", Ref(ctx), Ref(crsId), Real(0), Real(0), Real(0), Real(1), Real(0), Real(1));
+            }
+            else
+            {
+                w.Add("IfcMapConversion", Ref(ctx), Ref(crsId), Real(mc.Eastings), Real(mc.Northings), Real(mc.OrthogonalHeight),
+                    Real(mc.XAxisAbscissa), Real(mc.XAxisOrdinate), Real(mc.Scale));
+            }
             r.Georeference = new JsonObject
             {
                 ["mode"] = geo.Mode.ToString(), ["crs"] = crs.Name, ["zone"] = crs.MapZone,
+                ["appliedTo"] = opt.GeoInPlacement ? "IfcSite placement (IfcMapConversion neutro)" : "IfcMapConversion",
                 ["eastings"] = mc.Eastings, ["northings"] = mc.Northings, ["orthogonalHeight"] = mc.OrthogonalHeight,
                 ["rotationDegrees"] = geo.RotationDegrees, ["xAxisAbscissa"] = mc.XAxisAbscissa, ["xAxisOrdinate"] = mc.XAxisOrdinate,
             };
@@ -100,7 +119,7 @@ public static class IfcExporter
         else r.Warnings.Add("Sem parâmetros de georreferenciamento: IFC em coordenadas do modelo.");
 
         // ---------- Estrutura espacial
-        int sitePl = w.Add("IfcLocalPlacement", Null, Ref(wcs));
+        int sitePl = w.Add("IfcLocalPlacement", Null, Ref(sitePlacement));
         int site = w.Add("IfcSite", Str(Gid("site")), Null, Str(opt.SiteName), Null, Null, Ref(sitePl), Null, Null, Enum("ELEMENT"), Null, Null, Null, Null, Null);
         int bldPl = w.Add("IfcLocalPlacement", Ref(sitePl), Ref(wcs));
         int building = w.Add("IfcBuilding", Str(Gid("building")), Null, Str(opt.BuildingName), Null, Null, Ref(bldPl), Null, Null, Enum("ELEMENT"), Null, Null, Null);

@@ -81,3 +81,14 @@ Código em `src/Pasb.Georeferencing` (matemática pura) e testes em `tests/Pasb.
 ## Limitação de escopo
 
 IFC2x3 não possui o mesmo mecanismo nativo de georreferenciamento do IFC4. Qualquer suporte futuro deverá ter estratégia própria documentada, sem alegar equivalência.
+
+## Correção 0.5.0: coordenadas aplicadas na posição do IfcSite
+
+Teste do usuário em 20/11/2026: o IFC 0.4.0 tinha o `IfcMapConversion` correto, mas o Trimble Connect mostrou o modelo na origem do projeto. Esse visualizador ignora o `IfcMapConversion`, sobretudo quando o sistema é local, sem código EPSG.
+
+A partir da 0.5.0, por padrão (opção **"Aplicar as coordenadas na posição do modelo"** na janela; `apply_to_placement` no Conector IA):
+
+- A posição do `IfcSite` recebe a origem do modelo levada às coordenadas reais, com o eixo X girado pelo ângulo. Isso equivale a `L = T − R·k·B`, igual ao Eastings/Northings/OrthogonalHeight do `IfcMapConversion` antigo.
+- Todas as peças estão posicionadas em relação ao site. Por isso, no IFC, o ponto base aparece exatamente na coordenada digitada, em qualquer visualizador.
+- O `IfcMapConversion` continua presente, com o sistema (`IfcProjectedCRS`, EPSG no caso SIRGAS), mas fica **neutro** (0, 0, 0, sem rotação). Assim um visualizador que lê os dois não aplica o deslocamento duas vezes.
+- Desmarcando a opção, volta o comportamento antigo: site na origem e georreferência só no `IfcMapConversion`.

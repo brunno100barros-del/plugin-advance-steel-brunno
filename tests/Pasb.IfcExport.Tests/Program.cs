@@ -54,6 +54,29 @@ Run("georreferenciamento IfcProjectedCRS + IfcMapConversion", () =>
     True(ifc.Contains("=IFCPROJECTEDCRS('EPSG:31982'"), "CRS"); True(ifc.Contains("=IFCMAPCONVERSION("), "map conversion");
     True(rep.Georeference!["zone"]!.ToString() == "22S", "zona no relatório");
 });
+Run("coordenadas reais aplicadas na posição do IfcSite (padrão) e IfcMapConversion neutro", () =>
+{
+    True(ifc.Contains("=IFCCARTESIANPOINT((500000.,7400000.,800.));"), "origem do site em E,N,H");
+    string cos = StepWriter.Real(Math.Cos(Math.PI / 6)), sin = StepWriter.Real(Math.Sin(Math.PI / 6));
+    True(ifc.Contains($"=IFCDIRECTION(({cos},{sin},0.));"), "eixo X girado 30°");
+    True(Regex.IsMatch(ifc, @"=IFCMAPCONVERSION\(#\d+,#\d+,0\.,0\.,0\.,1\.,0\.,1\.\);"), "map conversion neutro");
+    True(Regex.IsMatch(ifc, @"=IFCSITE\([^;]*#(\d+),\$,\$,\.ELEMENT\."), "site com posição");
+});
+Run("caso real do teste: ponto base (-84,5; -50) → (493031,442; 2998,078; 23,02)", () =>
+{
+    var g = new GeoParameters(GeoMode.LocalXyz, new Point3(-84.5, -50, 0), new Point3(493031.442, 2998.078, 23.02), 0, 0.001, LocalCrsName: "Obra");
+    string s = IfcExporter.Export(x, new ExportOptions(Geo: g), out _);
+    True(s.Contains("=IFCCARTESIANPOINT((493031.5265,2998.128,23.02));"), "origem do site");
+    // Conferência: origem do site + ponto base (em m) = coordenada real digitada.
+    True(Math.Abs(493031.5265 + (-84.5 * 0.001) - 493031.442) < 1e-9 && Math.Abs(2998.128 + (-50 * 0.001) - 2998.078) < 1e-9, "ponto base cai na coordenada real");
+});
+Run("modo antigo: só IfcMapConversion, site na origem", () =>
+{
+    string s = IfcExporter.Export(x, new ExportOptions(Geo: geo) { GeoInPlacement = false }, out ExportReport r3);
+    True(Regex.IsMatch(s, @"=IFCMAPCONVERSION\(#\d+,#\d+,500000\.,7400000\.,800\.,"), "map conversion com valores");
+    True(!s.Contains("((500000.,7400000.,800.))"), "site não deslocado");
+    True(r3.Georeference!["appliedTo"]!.ToString() == "IfcMapConversion", "relatório");
+});
 Run("propriedades preservadas com tipos e estados", () =>
 {
     True(ifc.Contains("IFCLABEL('AS_Origin')") || ifc.Contains("'AS_Origin'"), "pset origem");

@@ -37,6 +37,7 @@ public sealed class ExportDialog : Form
     private readonly TextBox _tx = Box(), _ty = Box(), _tz = Box(), _angle = Box();
     private readonly ComboBox _unit = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
     private readonly RadioButton _rot = Radio("Rotação (anti-horária, X do modelo → Leste)"), _azi = Radio("Azimute (horário, Norte → +Y do modelo)");
+    private readonly CheckBox _inPlacement = new() { Text = "Aplicar as coordenadas na posição do modelo (recomendado;\nTrimble Connect e outros visualizadores)", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
     private readonly TextBox _output = Box();
     private readonly Button _browse = Btn("...");
     private readonly Label _errors = new() { ForeColor = Color.FromArgb(255, 140, 120), AutoSize = false, Dock = DockStyle.Fill };
@@ -56,7 +57,7 @@ public sealed class ExportDialog : Form
         BackColor = Back; ForeColor = Text_; Font = new Font("Segoe UI", 9f);
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1060, 600);
+        ClientSize = new Size(1060, 660);
         AcceptButton = _export; CancelButton = _cancel;
 
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 2, Padding = new Padding(10), BackColor = Back };
@@ -114,6 +115,7 @@ public sealed class ExportDialog : Form
         c3.Controls.Add(Caption("Ângulo (graus)"));
         c3.Controls.Add(Group(_rot, _azi));
         _angle.Width = 120; c3.Controls.Add(_angle);
+        _inPlacement.ForeColor = Text_; c3.Controls.Add(_inPlacement);
         root.Controls.Add(c3, 2, 0);
 
         // Rodapé: arquivo, erros, botões
@@ -161,6 +163,7 @@ public sealed class ExportDialog : Form
         _unit.SelectedIndex = s.TargetUnit == TargetUnit.Millimeters ? 1 : 0;
         _tx.Text = ExportSettings.FormatNumber(s.TargetX); _ty.Text = ExportSettings.FormatNumber(s.TargetY); _tz.Text = ExportSettings.FormatNumber(s.TargetZ);
         (s.AngleMode == AngleInput.Azimuth ? _azi : _rot).Checked = true;
+        _inPlacement.Checked = s.GeoInPlacement;
         _angle.Text = ExportSettings.FormatNumber(s.AngleDegrees, 8);
         _output.Text = s.OutputPath;
     }
@@ -184,6 +187,7 @@ public sealed class ExportDialog : Form
         Num(_tz, "Z / Cota", v => s.TargetZ = v, errors);
         Num(_angle, "Ângulo", v => s.AngleDegrees = v, errors);
         s.AngleMode = _azi.Checked ? AngleInput.Azimuth : AngleInput.Rotation;
+        s.GeoInPlacement = _inPlacement.Checked;
         s.OutputPath = _output.Text.Trim();
 
         if (validate) errors.AddRange(s.Validate());
@@ -203,7 +207,7 @@ public sealed class ExportDialog : Form
         bool geo = !_geoNone.Checked;
         _zone.Enabled = _hemi.Enabled = _geoSirgas.Checked;
         _crsName.Enabled = _geoLocal.Checked;
-        foreach (Control c in new Control[] { _pick, _unit, _tx, _ty, _tz, _angle, _rot, _azi }) c.Enabled = geo;
+        foreach (Control c in new Control[] { _pick, _unit, _inPlacement, _tx, _ty, _tz, _angle, _rot, _azi }) c.Enabled = geo;
     }
 
     private void Browse()
