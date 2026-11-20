@@ -30,6 +30,13 @@ Janela (níveis, tipos, opções) ──► Pasb.IfcImport.exe (xBIM + OpenCasca
 
 As opções ficam guardadas em `%APPDATA%\PASB\import-settings.json`.
 
+## Progresso (0.8.1)
+
+- **Leitura do arquivo** (ao clicar em Abrir...): a janela mostra uma barra com porcentagem, etapa e tempo decorrido. O relógio continua andando mesmo quando a porcentagem para numa etapa demorada, então dá para ver que não travou. Cancelar na janela encerra a leitura.
+- **Importação**: uma janela de progresso mostra a etapa (lendo o arquivo, gerando a geometria das peças, peças repetidas, aberturas e recortes, posicionando, desenhando N de M), a porcentagem e o tempo. O botão **Cancelar** encerra o leitor ou descarta a transação, e **nada** é desenhado.
+- O IFC é sempre lido **em memória**. O banco temporário em disco que a xBIM usa para arquivos grandes é muito mais lento.
+- As etapas internas da xBIM, que reiniciam em 0% a cada fase, são combinadas numa porcentagem que **só avança**; há um teste automático que garante isso.
+
 ## Como o nível de cada elemento é encontrado
 
 Para cada elemento, o leitor sobe pela hierarquia do IFC até achar um `IfcBuildingStorey`. Ele segue, nesta ordem: a contenção espacial (`IfcRelContainedInSpatialStructure`, que no IFC4 vale para qualquer produto, inclusive `IfcSpace`), o hospedeiro de uma abertura (`IfcRelVoidsElement`) e a agregação, no caso de peças de um conjunto (`IfcRelAggregates`). Se não encontrar nenhum, o elemento vai para "Sem nível".

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Windows.Forms;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
@@ -47,7 +48,7 @@ public sealed class ImportCommand
             Aci.Resolver = i => AcColor.FromColorIndex(AcColorMethod.ByAci, i).ColorValue;
             ImportSettings settings = ImportSettings.Load();
             ImportChoice choice;
-            using (var dlg = new ImportDialog(settings, f => Scan(exe, f), PickAci, Version))
+            using (var dlg = new ImportDialog(settings, (f, prog, ct) => Scan(exe, f, prog, ct), PickAci, Version))
             {
                 if (Autodesk.AutoCAD.ApplicationServices.Application.ShowModalDialog(dlg) != DialogResult.OK || dlg.Choice == null)
                 { ed.WriteMessage("\nPASB: importação cancelada.\n"); return; }
@@ -55,14 +56,19 @@ public sealed class ImportCommand
             }
             settings.Save();
 
-            // 2) Leitura e triangulação fora do AutoCAD
+            // 2) Leitura e triangulação fora do AutoCAD (0–70%), depois desenho (70–100%), com janela de progresso e Cancelar.
             var clock = Stopwatch.StartNew();
-            ed.WriteMessage($"\nPASB: lendo {Path.GetFileName(choice.IfcFile)} (pode demorar em arquivos grandes)...");
-            MeshPackage pkg = Convert(exe, choice);
+            using var progress = new ImportProgressForm(Path.GetFileName(choice.IfcFile), Version);
+            progress.Show();
+            System.Windows.Forms.Application.DoEvents();
+            MeshPackage? pkg = Convert(exe, choice, progress);
+            if (pkg == null || progress.CancelRequested) { progress.Close(); ed.WriteMessage("\nPASB: importação cancelada; nada foi desenhado.\n"); return; }
             ed.WriteMessage($"\nPASB: {pkg.Instances.Count} elemento(s), {pkg.Geometries.Count} geometria(s) lidas em {clock.Elapsed.TotalSeconds:0.0} s. Desenhando...");
 
-            // 3) Desenho
-            ImportStats st = Draw(doc, pkg, choice);
+            // 3) Desenho (cancelar descarta a transação: nada entra no desenho)
+            ImportStats? st = Draw(doc, pkg, choice, progress);
+            progress.Close();
+            if (st == null) { ed.WriteMessage("\nPASB: importação cancelada; nada foi desenhado.\n"); return; }
             ed.WriteMessage($"\nPASB: importação concluída em {clock.Elapsed.TotalSeconds:0.0} s: {st.Summary()}");
             foreach (string w in pkg.Warnings.Take(10)) ed.WriteMessage("\nPASB: aviso: " + w);
             if (pkg.Warnings.Count > 10) ed.WriteMessage($"\nPASB: ... e mais {pkg.Warnings.Count - 10} aviso(s).");
@@ -79,18 +85,21 @@ public sealed class ImportCommand
     private static string EnginePath() =>
         Path.Combine(Path.GetDirectoryName(typeof(ImportCommand).Assembly.Location)!, "IfcImport", "Pasb.IfcImport.exe");
 
-    private static IfcScan Scan(string exe, string ifc)
+    /// <summary>Resumo do arquivo. Roda numa thread de fundo (chamado pela janela): sem DoEvents aqui.</summary>
+    private static IfcScan Scan(string exe, string ifc, Action<int, string> progress, CancellationToken ct)
     {
         string outp = TempFile(".json");
         try
         {
-            RunEngine(exe, null, "scan", ifc, outp);
+            RunEngine(exe, progress, () => ct.IsCancellationRequested, pumpUi: false, "scan", ifc, outp);
+            ct.ThrowIfCancellationRequested();
             return ScanJson.Deserialize(File.ReadAllText(outp));
         }
         finally { TryDelete(outp); }
     }
 
-    private static MeshPackage Convert(string exe, ImportChoice c)
+    /// <summary>Malhas dos elementos escolhidos; null se o usuário cancelou.</summary>
+    private static MeshPackage? Convert(string exe, ImportChoice c, ImportProgressForm progress)
     {
         string req = TempFile(".json"), outp = TempFile(".pasbmesh");
         try
@@ -101,22 +110,20 @@ public sealed class ImportCommand
                 IncludeOpenings = c.Settings.IncludeOpenings, IncludeSpaces = c.Settings.IncludeSpaces,
             };
             File.WriteAllText(req, JsonSerializer.Serialize(r, ScanJson.Options), new UTF8Encoding(false));
-            using (var pm = new ProgressMeter())
-            {
-                pm.Start("PASB: lendo IFC");
-                pm.SetLimit(100);
-                int last = 0;
-                RunEngine(exe, pct => { while (last < pct) { pm.MeterProgress(); last++; } }, "convert", req, outp);
-                pm.Stop();
-            }
+            bool finished = RunEngine(exe, (pct, stage) => progress.Report(pct * 70 / 100, stage), () => progress.CancelRequested, pumpUi: true, "convert", req, outp);
+            if (!finished) return null;
+            progress.Report(70, "Lendo as malhas geradas");
             using var fs = File.OpenRead(outp);
             return MeshPackage.Read(fs);
         }
         finally { TryDelete(req); TryDelete(outp); }
     }
 
-    /// <summary>Roda o Pasb.IfcImport.exe sem travar o AutoCAD; repassa "PROGRESSO n" e lança com a mensagem de erro.</summary>
-    private static void RunEngine(string exe, Action<int>? progress, params string[] args)
+    /// <summary>
+    /// Roda o Pasb.IfcImport.exe; repassa "PROGRESSO n etapa". Se <paramref name="cancelled"/> virar true, encerra o processo e devolve false.
+    /// Com <paramref name="pumpUi"/> (thread do AutoCAD), mantém as janelas respondendo enquanto espera.
+    /// </summary>
+    private static bool RunEngine(string exe, Action<int, string>? progress, Func<bool> cancelled, bool pumpUi, params string[] args)
     {
         var psi = new ProcessStartInfo(exe)
         {
@@ -126,25 +133,37 @@ public sealed class ImportCommand
         foreach (string a in args) psi.ArgumentList.Add(a);
         using Process p = Process.Start(psi) ?? throw new InvalidOperationException("não foi possível iniciar o leitor de IFC");
         var err = new StringBuilder();
-        var pending = new System.Collections.Concurrent.ConcurrentQueue<int>();
-        p.OutputDataReceived += (_, e) => { if (e.Data?.StartsWith("PROGRESSO ") == true && int.TryParse(e.Data[10..], out int v)) pending.Enqueue(v); };
+        var pending = new System.Collections.Concurrent.ConcurrentQueue<(int pct, string stage)>();
+        p.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data?.StartsWith("PROGRESSO ") != true) return;
+            string rest = e.Data[10..];
+            int sp = rest.IndexOf(' ');
+            if (int.TryParse(sp < 0 ? rest : rest[..sp], out int v)) pending.Enqueue((v, sp < 0 ? "" : rest[(sp + 1)..]));
+        };
         p.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (err) err.AppendLine(e.Data); };
         p.BeginOutputReadLine(); p.BeginErrorReadLine();
-        while (!p.WaitForExit(100))
+        while (!p.WaitForExit(pumpUi ? 50 : 150))
         {
-            while (pending.TryDequeue(out int v)) progress?.Invoke(v);
-            System.Windows.Forms.Application.DoEvents();
+            while (pending.TryDequeue(out var v)) progress?.Invoke(v.pct, v.stage);
+            if (pumpUi) System.Windows.Forms.Application.DoEvents();
+            if (cancelled())
+            {
+                try { p.Kill(entireProcessTree: true); } catch (System.Exception) { }
+                return false;
+            }
         }
         p.WaitForExit();
-        while (pending.TryDequeue(out int v)) progress?.Invoke(v);
+        while (pending.TryDequeue(out var v)) progress?.Invoke(v.pct, v.stage);
+        if (cancelled()) return false;
         if (p.ExitCode != 0)
         {
             string msg = string.Join(" ", err.ToString().Split('\n').Select(l => l.Trim())
                 .Where(l => l.Length > 0 && !l.Contains("xbim InternalServices") && !l.Contains("XbimServices") && !l.StartsWith("//")));
             throw new InvalidOperationException("leitor de IFC: " + (msg.Length > 0 ? msg : "código " + p.ExitCode));
         }
+        return true;
     }
-
     private static short? PickAci(short current)
     {
         var cd = new Autodesk.AutoCAD.Windows.ColorDialog
@@ -168,7 +187,8 @@ public sealed class ImportCommand
             (Skipped > 0 ? $", {Skipped} não importado(s)" : "") + $"; layers: {string.Join(", ", Layers)}.";
     }
 
-    private static ImportStats Draw(AcDoc doc, MeshPackage pkg, ImportChoice choice)
+    /// <summary>Desenha tudo numa transação; devolve null (sem gravar nada) se o usuário cancelar.</summary>
+    private static ImportStats? Draw(AcDoc doc, MeshPackage pkg, ImportChoice choice, ImportProgressForm progress)
     {
         ImportSettings s = choice.Settings;
         Database db = doc.Database;
@@ -181,10 +201,10 @@ public sealed class ImportCommand
 
         using (doc.LockDocument())
         using (AcTransaction tr = db.TransactionManager.StartTransaction())
-        using (var pm = new ProgressMeter())
         {
-            pm.Start("PASB: desenhando IFC");
-            pm.SetLimit(Math.Max(1, pkg.Instances.Count));
+            string kind = s.Geometry == ImportGeometry.Solid ? "sólidos" : "malhas";
+            int total = Math.Max(1, pkg.Instances.Count), n = 0;
+            var lastPump = Stopwatch.StartNew();
             EnsureRegApp(tr, db);
             var space = (BlockTableRecord)tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite);
             TempSpace = space; TempTr = tr;
@@ -193,7 +213,14 @@ public sealed class ImportCommand
 
             foreach (MeshInstance inst in pkg.Instances)
             {
-                pm.MeterProgress();
+                n++;
+                if (lastPump.ElapsedMilliseconds > 150)
+                {
+                    progress.Report(70 + 30 * n / total, $"Desenhando {kind}: {n} de {total}");
+                    System.Windows.Forms.Application.DoEvents();
+                    lastPump.Restart();
+                    if (progress.CancelRequested) { TempSpace = null; TempTr = null; tr.Abort(); return null; }
+                }
                 if (!geoms.TryGetValue(inst.GeometryId, out MeshGeometry? g)) { st.Skipped++; continue; }
                 string layer = LayerName(inst, choice);
                 short? layerColor = s.ColorMode == ImportColorMode.ByStorey && s.LayerMode == ImportLayerMode.ByStorey
@@ -236,8 +263,10 @@ public sealed class ImportCommand
                     new TypedValue((int)DxfCode.ExtendedDataAsciiString, Trim(inst.Name ?? "")),
                     new TypedValue((int)DxfCode.ExtendedDataAsciiString, Trim(choice.StoreyNames.GetValueOrDefault(inst.StoreyKey, "Sem nível"))));
             }
-            pm.Stop();
+            progress.Report(100, "Gravando no desenho");
+            System.Windows.Forms.Application.DoEvents();
             TempSpace = null; TempTr = null;
+            if (progress.CancelRequested) { tr.Abort(); return null; }
             tr.Commit();
         }
         return st;

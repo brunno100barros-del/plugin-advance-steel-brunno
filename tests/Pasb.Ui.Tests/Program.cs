@@ -132,7 +132,7 @@ internal static class Program
                 Storeys = { new() { Key = "A", Name = "Térreo", Elevation = 0, Count = 6 }, new() { Key = "B", Name = "Cobertura", Elevation = 6000, Count = 4 } },
             };
             var s = new ImportSettings { StoreyColors = { ["Cobertura"] = 140 } };
-            using var dlg = new ImportDialog(s, _ => scan);
+            using var dlg = new ImportDialog(s, (_, _, _) => scan);
             True(!dlg.Collect() && dlg.LastErrors.Any(e => e.Contains("Abra")), "sem arquivo não importa");
             dlg.LoadScan(scan);
             True(dlg.Collect() && dlg.Choice != null, string.Join("; ", dlg.LastErrors));

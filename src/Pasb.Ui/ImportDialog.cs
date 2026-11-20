@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Pasb.IfcImport.Model;
@@ -36,7 +37,14 @@ public sealed class ImportDialog : Form
     public IfcScan? Scan { get; private set; }
     public List<string> LastErrors { get; private set; } = new();
 
-    private readonly Func<string, IfcScan> _scanner;
+    private readonly Func<string, Action<int, string>, CancellationToken, IfcScan> _scanner;
+    private CancellationTokenSource? _scanCts;
+    private readonly CoordixProgressBar _bar = new() { Width = 640, Height = 10, Visible = false, Margin = new Padding(3, 4, 3, 2) };
+    private readonly Label _barText = new() { AutoSize = false, Width = 640, Height = 18, ForeColor = Brand.CopperDark, Font = Brand.Mono(8.5f), Visible = false };
+    private readonly System.Windows.Forms.Timer _clockTimer = new() { Interval = 500 };
+    private readonly System.Diagnostics.Stopwatch _clock = new();
+    private string _stageText = "";
+    private int _pct = -1;
     private readonly Func<short, short?>? _pickColor;
     private string _file = "";
 
@@ -57,7 +65,7 @@ public sealed class ImportDialog : Form
     private readonly Label _errors = new() { ForeColor = Brand.ErrorText, AutoSize = false, Dock = DockStyle.Fill };
     private readonly Button _import = Brand.Btn("Importar", primary: true), _cancel = Brand.Btn("Cancelar"), _open = Brand.Btn("Abrir...");
 
-    public ImportDialog(ImportSettings settings, Func<string, IfcScan> scanner, Func<short, short?>? pickColor = null, string version = "")
+    public ImportDialog(ImportSettings settings, Func<string, Action<int, string>, CancellationToken, IfcScan> scanner, Func<short, short?>? pickColor = null, string version = "")
     {
         Settings = settings; _scanner = scanner; _pickColor = pickColor;
         Text = "PASB — Importar IFC" + (version.Length > 0 ? "  (" + version + ")" : "");
@@ -77,7 +85,9 @@ public sealed class ImportDialog : Form
         root.BringToFront();
 
         // ---- esquerda: conteúdo do arquivo
-        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, BackColor = Brand.Ink, Padding = new Padding(12), Margin = new Padding(4) };
+        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8, BackColor = Brand.Ink, Padding = new Padding(12), Margin = new Padding(4) };
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -87,10 +97,13 @@ public sealed class ImportDialog : Form
         left.Controls.Add(Brand.SectionLabel("Conteúdo do arquivo"), 0, 0);
         _status.Text = "Clique em \"Abrir...\" para escolher um arquivo IFC. Os níveis e os tipos que ele contém aparecem aqui.";
         left.Controls.Add(_status, 0, 1);
-        left.Controls.Add(HeaderRow("Níveis", "Clique na cor para trocar", out var stAll, out var stNone), 0, 2);
-        left.Controls.Add(_storeys, 0, 3);
-        left.Controls.Add(HeaderRow("Tipos", "Desmarque o que não quiser importar", out var tyAll, out var tyNone), 0, 4);
-        left.Controls.Add(_types, 0, 5);
+        left.Controls.Add(_bar, 0, 2);
+        left.Controls.Add(_barText, 0, 3);
+        left.Controls.Add(HeaderRow("Níveis", "Clique na cor para trocar", out var stAll, out var stNone), 0, 4);
+        left.Controls.Add(_storeys, 0, 5);
+        left.Controls.Add(HeaderRow("Tipos", "Desmarque o que não quiser importar", out var tyAll, out var tyNone), 0, 6);
+        left.Controls.Add(_types, 0, 7);
+        _clockTimer.Tick += (_, _) => UpdateBarText();
         root.Controls.Add(left, 0, 0);
         stAll.Click += (_, _) => CheckAll(_storeys, true); stNone.Click += (_, _) => CheckAll(_storeys, false);
         tyAll.Click += (_, _) => CheckAll(_types, true); tyNone.Click += (_, _) => CheckAll(_types, false);
@@ -145,7 +158,8 @@ public sealed class ImportDialog : Form
 
         _open.Click += (_, _) => Browse();
         _import.Click += (_, _) => { if (Collect()) { DialogResult = DialogResult.OK; Close(); } };
-        _cancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
+        _cancel.Click += (_, _) => { _scanCts?.Cancel(); DialogResult = DialogResult.Cancel; Close(); };
+        FormClosed += (_, _) => { _scanCts?.Cancel(); _clockTimer.Stop(); };
 
         LoadSettings();
     }
@@ -171,13 +185,28 @@ public sealed class ImportDialog : Form
         _status.Text = "Lendo " + Path.GetFileName(file) + "..."; _status.ForeColor = Brand.CopperDark;
         _storeys.Rows.Clear(); _types.Rows.Clear(); Scan = null;
         _import.Enabled = _open.Enabled = false;
-        UseWaitCursor = true;
-        Task.Run(() => _scanner(file)).ContinueWith(t => BeginInvoke(new Action(() =>
+        _scanCts?.Cancel();
+        var cts = _scanCts = new CancellationTokenSource();
+        _pct = -1; _stageText = "Iniciando o leitor de IFC";
+        _bar.Value = -1; _bar.Visible = _barText.Visible = true;
+        _clock.Restart(); _clockTimer.Start(); UpdateBarText();
+        Action<int, string> report = (pct, stage) =>
         {
-            UseWaitCursor = false; _open.Enabled = true; _import.Enabled = true;
-            if (t.Exception != null) { _status.Text = "Não foi possível ler o arquivo: " + t.Exception.GetBaseException().Message; _status.ForeColor = Brand.ErrorText; return; }
-            LoadScan(t.Result);
-        })));
+            if (IsDisposed || cts.IsCancellationRequested) return;
+            try { BeginInvoke(new Action(() => { _pct = pct; _stageText = stage; _bar.Value = pct; UpdateBarText(); })); } catch (InvalidOperationException) { }
+        };
+        Task.Run(() => _scanner(file, report, cts.Token)).ContinueWith(t =>
+        {
+            if (IsDisposed || cts.IsCancellationRequested) return;
+            BeginInvoke(new Action(() =>
+            {
+                _clockTimer.Stop(); _bar.Visible = _barText.Visible = false;
+                _open.Enabled = true; _import.Enabled = true;
+                if (t.Exception != null) { _status.Text = "Não foi possível ler o arquivo: " + t.Exception.GetBaseException().Message; _status.ForeColor = Brand.ErrorText; return; }
+                LoadScan(t.Result);
+                _status.Text += $"   (lido em {_clock.Elapsed.TotalSeconds:0.0} s)";
+            }));
+        });
     }
 
     /// <summary>Mostra o resumo do arquivo (público para testes).</summary>
@@ -209,6 +238,13 @@ public sealed class ImportDialog : Form
         }
         _openings.Text = $"Incluir aberturas (IfcOpeningElement){Count(scan, "IfcOpeningElement")}";
         _spaces.Text = $"Incluir espaços (IfcSpace){Count(scan, "IfcSpace")}";
+    }
+
+    private void UpdateBarText()
+    {
+        TimeSpan t = _clock.Elapsed;
+        string time = t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"mm\:ss");
+        _barText.Text = (_pct >= 0 ? $"{_pct}%" : "trabalhando...") + "  ·  " + _stageText + "  ·  " + time;
     }
 
     private static string Count(IfcScan s, string type) => s.Types.FirstOrDefault(t => t.Name == type) is { } t ? $" — {t.Count}" : " — nenhum";

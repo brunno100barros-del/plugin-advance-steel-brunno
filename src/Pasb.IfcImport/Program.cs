@@ -27,11 +27,11 @@ internal static class Program
         Console.OutputEncoding = new UTF8Encoding(false);
         try
         {
-            if (args.Length == 3 && args[0] == "scan") { File.WriteAllText(args[2], ScanJson.Serialize(Reader.Scan(args[1])), new UTF8Encoding(false)); return 0; }
+            if (args.Length == 3 && args[0] == "scan") { File.WriteAllText(args[2], ScanJson.Serialize(Reader.Scan(args[1], Progress.Report)), new UTF8Encoding(false)); return 0; }
             if (args.Length == 3 && args[0] == "convert")
             {
                 var req = JsonSerializer.Deserialize<ConvertRequest>(File.ReadAllText(args[1]), ScanJson.Options) ?? throw new InvalidDataException("Pedido vazio.");
-                MeshPackage p = Reader.Convert(req, pct => Console.WriteLine("PROGRESSO " + pct));
+                MeshPackage p = Reader.Convert(req, Progress.Report);
                 using var fs = File.Create(args[2]);
                 p.Write(fs);
                 return 0;
@@ -48,13 +48,38 @@ internal static class Program
     }
 }
 
+/// <summary>Linhas "PROGRESSO &lt;n&gt; &lt;etapa&gt;" em stdout (só quando muda), lidas pelo plugin.</summary>
+internal static class Progress
+{
+    private static int _last = -1;
+    private static string _stage = "";
+    public static void Report(int pct, string stage)
+    {
+        pct = Math.Max(Math.Clamp(pct, 0, 100), Math.Max(_last, 0));
+        if (pct == _last && stage == _stage) return;
+        _last = pct; _stage = stage;
+        Console.WriteLine($"PROGRESSO {pct} {stage}");
+        Console.Out.Flush();
+    }
+}
+
 internal static class Reader
 {
     private static readonly HashSet<string> Excluded = new(StringComparer.Ordinal) { "IfcOpeningElement", "IfcSpace" };
 
-    public static IfcScan Scan(string file)
+    /// <summary>Abre sempre em memória (o banco temporário em disco da xBIM para arquivos grandes é muito mais lento), com progresso.</summary>
+    private static IfcStore Open(string file, Action<int, string> progress, int from, int to)
     {
-        using IfcStore model = IfcStore.Open(file);
+        if (!File.Exists(file)) throw new FileNotFoundException(file + " file was not found");
+        long mb = new FileInfo(file).Length / (1024 * 1024);
+        progress(from, $"Lendo o arquivo IFC ({mb} MB)");
+        return IfcStore.Open(file, null, 1_000_000.0, (pct, _) => progress(from + (to - from) * Math.Clamp(pct, 0, 100) / 100, $"Lendo o arquivo IFC ({mb} MB)"));
+    }
+
+    public static IfcScan Scan(string file, Action<int, string> progress)
+    {
+        using IfcStore model = Open(file, progress, 0, 90);
+        progress(92, "Contando níveis e tipos");
         var scan = new IfcScan
         {
             File = file,
@@ -79,28 +104,29 @@ internal static class Reader
 
         scan.Layers = model.Instances.OfType<IIfcPresentationLayerAssignment>().Select(l => (string)l.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().OrderBy(n => n).ToList();
         if (scan.Storeys.Count == 0) scan.Warnings.Add("O IFC não tem níveis (IfcBuildingStorey).");
+        progress(100, "Pronto");
         return scan;
     }
 
-    public static MeshPackage Convert(ConvertRequest req, Action<int> progress)
+    public static MeshPackage Convert(ConvertRequest req, Action<int, string> progress)
     {
-        using IfcStore model = IfcStore.Open(req.IfcFile);
-        progress(10);
+        using IfcStore model = Open(req.IfcFile, progress, 0, 25);
         var pkg = new MeshPackage();
         var types = new HashSet<string>(req.Types, StringComparer.Ordinal);
         var storeys = new HashSet<string>(req.Storeys, StringComparer.Ordinal);
         double k = 1.0 / model.ModelFactors.OneMetre;   // unidades do IFC → metros
 
         var ctx = new Xbim3DModelContext(model);
-        ctx.CreateContext(null, true);
-        progress(60);
+        progress(25, "Gerando a geometria (triangulação)");
+        ctx.CreateContext((pct, state) => GeometryStage(progress, pct, state?.ToString() ?? ""), true);
+        progress(85, "Preparando as malhas");
 
         var geomIds = new Dictionary<int, int>();
         var instances = ctx.ShapeInstances().Where(s => s.RepresentationType != XbimGeometryRepresentationType.OpeningsAndAdditionsExcluded).ToList();
         int done = 0, failed = 0;
         foreach (XbimShapeInstance si in instances)
         {
-            if (++done % 200 == 0) progress(60 + 35 * done / Math.Max(1, instances.Count));
+            if (++done % 100 == 0) progress(85 + 14 * done / Math.Max(1, instances.Count), $"Preparando as malhas ({done} de {instances.Count})");
             if (model.Instances[si.IfcProductLabel] is not IIfcProduct p) continue;
             string type = p.ExpressType.Name;
             if (type == "IfcOpeningElement" && !req.IncludeOpenings) continue;
@@ -141,8 +167,34 @@ internal static class Reader
             pkg.Instances.Add(inst);
         }
         if (failed > 0) pkg.Warnings.Insert(0, $"{failed} geometria(s) sem triângulos ou com erro de leitura.");
-        progress(100);
+        progress(100, "Pronto");
         return pkg;
+    }
+
+    /// <summary>
+    /// A xBIM informa várias etapas, cada uma de 0 a 100% (às vezes -1/101). Cada etapa recebe uma faixa fixa entre 25% e 85%,
+    /// para a barra só avançar; o texto vai em português.
+    /// </summary>
+    private static void GeometryStage(Action<int, string> progress, int pct, string state)
+    {
+        (int a, int b, string label) = state switch
+        {
+            _ when state.StartsWith("Initialise", StringComparison.Ordinal) => (25, 27, "Preparando a geometria"),
+            _ when state.Contains("ShapeGeometries") || state.Contains("Creating Geometry") => (27, 65, "Gerando a geometria das peças" + Count(state)),
+            _ when state.Contains("MappedItems") => (65, 70, "Peças repetidas" + Count(state)),
+            _ when state.Contains("FeatureElements") => (70, 78, "Aberturas e recortes" + Count(state)),
+            _ when state.Contains("ProductShapes") => (78, 83, "Posicionando os elementos"),
+            _ when state.Contains("Regions") => (83, 85, "Finalizando a geometria"),
+            _ => (25, 85, "Gerando a geometria"),
+        };
+        int p = pct < 0 ? 0 : pct > 100 ? 100 : pct;
+        progress(a + (b - a) * p / 100, label);
+    }
+
+    private static string Count(string state)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(state, @"\((\d+)\s");
+        return m.Success ? $" ({m.Groups[1].Value})" : "";
     }
 
     /// <summary>Nível do elemento: contenção espacial, agregação (peças de um conjunto), hospedeiro da abertura ou espaço.</summary>

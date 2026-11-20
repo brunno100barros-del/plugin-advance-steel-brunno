@@ -22,22 +22,22 @@ Directory.CreateDirectory(tmp);
 string ifc = Path.Combine(AppContext.BaseDirectory, "niveis.ifc");
 string exe = FindExe();
 
-(int code, string err) Exe(params string[] args)
+(int code, string err, string output) Exe(params string[] args)
 {
     var psi = new ProcessStartInfo(exe) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true };
     foreach (string a in args) psi.ArgumentList.Add(a);
     using Process p = Process.Start(psi)!;
-    p.StandardOutput.ReadToEnd();
+    string o = p.StandardOutput.ReadToEnd();
     string e = p.StandardError.ReadToEnd();
     p.WaitForExit();
-    return (p.ExitCode, e);
+    return (p.ExitCode, e, o);
 }
 
 MeshPackage Convert(ConvertRequest r)
 {
     string req = Path.Combine(tmp, Guid.NewGuid().ToString("N") + ".json"), outp = Path.ChangeExtension(req, ".pasbmesh");
     File.WriteAllText(req, JsonSerializer.Serialize(r, ScanJson.Options));
-    var (code, err) = Exe("convert", req, outp);
+    var (code, err, _) = Exe("convert", req, outp);
     if (code != 0) throw new Exception("convert falhou: " + err);
     using var fs = File.OpenRead(outp);
     return MeshPackage.Read(fs);
@@ -49,7 +49,7 @@ try
     Run("scan: tipos, níveis com cota e layers", () =>
     {
         string outp = Path.Combine(tmp, "scan.json");
-        var (code, err) = Exe("scan", ifc, outp);
+        var (code, err, _) = Exe("scan", ifc, outp);
         True(code == 0, "scan falhou: " + err);
         scan = ScanJson.Deserialize(File.ReadAllText(outp));
         True(scan.UnitsPerMetre == 1000 && scan.Schema == "Ifc4", "schema/unidade");
@@ -115,9 +115,27 @@ try
         True(ImportNaming.StoreyColor(0) == 1 && ImportNaming.StoreyColor(16) == 1 && ImportNaming.StoreyColor(1) != ImportNaming.StoreyColor(0), "paleta cíclica");
     });
 
+    Run("progresso: só avança, tem etapas em português e termina em 100%", () =>
+    {
+        foreach (string mode in new[] { "scan", "convert" })
+        {
+            string a1, a2 = Path.Combine(tmp, "p-" + mode + ".out");
+            if (mode == "scan") a1 = ifc;
+            else { a1 = Path.Combine(tmp, "p-req.json"); File.WriteAllText(a1, JsonSerializer.Serialize(new ConvertRequest { IfcFile = ifc }, ScanJson.Options)); }
+            var (code, err, output) = Exe(mode, a1, a2);
+            True(code == 0, mode + " falhou: " + err);
+            var lines = output.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries).Where(l => l.StartsWith("PROGRESSO ")).ToList();
+            var pcts = lines.Select(l => int.Parse(l.Split(' ')[1])).ToList();
+            True(pcts.Count >= 3 && pcts.Last() == 100, mode + ": termina em 100% (" + string.Join(",", pcts) + ")");
+            True(pcts.Zip(pcts.Skip(1)).All(x => x.Second >= x.First), mode + ": nunca volta (" + string.Join(",", pcts) + ")");
+            True(lines.All(l => l.Split(' ', 3).Length == 3), mode + ": toda linha tem etapa");
+            if (mode == "convert") True(lines.Any(l => l.Contains("Gerando a geometria das peças")) && lines.Any(l => l.Contains("Peças repetidas")), "etapas da geometria");
+        }
+    });
+
     Run("IFC inexistente: erro claro", () =>
     {
-        var (code, err) = Exe("scan", Path.Combine(tmp, "nao-existe.ifc"), Path.Combine(tmp, "x.json"));
+        var (code, err, _) = Exe("scan", Path.Combine(tmp, "nao-existe.ifc"), Path.Combine(tmp, "x.json"));
         True(code == 1 && err.Length > 0, "código 1 com mensagem");
     });
 }
