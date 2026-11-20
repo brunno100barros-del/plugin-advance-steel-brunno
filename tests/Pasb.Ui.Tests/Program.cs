@@ -105,6 +105,24 @@ internal static class Program
             }
             finally { File.Delete(path); }
         });
+        Run("identidade Coordix: paleta, ícones e cabeçalho", () =>
+        {
+            True(Brand.Ink == System.Drawing.ColorTranslator.FromHtml("#12151a") && Brand.Copper == System.Drawing.ColorTranslator.FromHtml("#a84d1c")
+                 && Brand.CopperDark == System.Drawing.ColorTranslator.FromHtml("#de7d43") && Brand.Iris == System.Drawing.ColorTranslator.FromHtml("#9a5a32"), "paleta");
+            foreach (int size in new[] { 16, 32 })
+            foreach (bool eye in new[] { false, true })
+            {
+                byte[] png = Brand.RibbonIconPng("IFC", size, eye, eye ? Brand.Ok : null);
+                True(png.Length > 100 && png[1] == (byte)'P' && png[2] == (byte)'N' && png[3] == (byte)'G', $"PNG {size} {eye}");
+                using var img = System.Drawing.Image.FromStream(new MemoryStream(png));
+                True(img.Width == size && img.Height == size, "tamanho do ícone");
+            }
+            using var icon = Brand.AppIcon(512);
+            True(icon.GetPixel(256, 256).A > 0 && icon.GetPixel(0, 0).A == 0, "ícone do app: cartão com cantos arredondados");
+            True(Brand.SansFamily.Length > 0 && Brand.MonoFamily.Length > 0, "fontes resolvidas: " + Brand.SansFamily + " / " + Brand.MonoFamily);
+            using var d = new ExportDialog(new ExportSettings { OutputPath = @"C:\x\a.ifc" }, "0.7.1");
+            True(d.BackColor == Brand.BgDark && d.Controls.OfType<Panel>().Any(p => p.Dock == DockStyle.Top && p.Height == 64), "janela com fundo e cabeçalho Coordix");
+        });
         Run("modo local exige nome do sistema", () =>
         {
             var s = new ExportSettings { Geo = GeoChoice.Local, LocalCrsName = "", OutputPath = @"C:\x\a.ifc" };

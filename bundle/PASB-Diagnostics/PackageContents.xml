@@ -12,8 +12,8 @@
                     AutodeskProduct="AutoCAD"
                     ProductType="Application"
                     Name="PASB - Plugin Advance Steel Brunno"
-                    AppVersion="0.7.0"
-                    FriendlyVersion="0.7.0"
+                    AppVersion="0.7.1"
+                    FriendlyVersion="0.7.1"
                     Description="Exportacao IFC4 georreferenciada com preservacao de propriedades e diagnostico somente leitura para o Advance Steel 2027."
                     Author="Brunno Barros"
                     SupportedLocales="Enu,Ptb"
@@ -25,7 +25,7 @@
   <Components Description="Advance Steel 2027">
     <RuntimeRequirements OS="Win64" Platform="ADVS" SeriesMin="R26.0" SeriesMax="R26.0" />
     <ComponentEntry AppName="PASB"
-                    Version="0.7.0"
+                    Version="0.7.1"
                     ModuleName="./Contents/Pasb.Diagnostics.AdvanceSteel.dll"
                     AppDescription="PASB para Advance Steel 2027"
                     LoadOnCommandInvocation="False"

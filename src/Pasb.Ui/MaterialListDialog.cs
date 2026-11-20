@@ -50,9 +50,9 @@ public sealed class MaterialListSettings
 /// <summary>Janela "Lista de material": escolha das tabelas e da altura do texto. OK = inserir.</summary>
 public sealed class MaterialListDialog : Form
 {
-    private static readonly Color Back = Color.FromArgb(37, 37, 38), Panel_ = Color.FromArgb(45, 45, 48),
-        Field = Color.FromArgb(30, 30, 30), Text_ = Color.FromArgb(230, 230, 230), Muted = Color.FromArgb(160, 160, 160),
-        Accent = Color.FromArgb(0, 122, 204);
+    private static readonly Color Back = Brand.BgDark, Panel_ = Brand.Ink,
+        Field = Brand.Field, Text_ = Brand.BgLight, Muted = Brand.Muted,
+        Accent = Brand.Copper;
 
     public MaterialListSettings Settings { get; }
     public List<string> LastErrors { get; private set; } = new();
@@ -63,7 +63,7 @@ public sealed class MaterialListDialog : Form
     private readonly CheckBox _anchors = Check("Chumbadores (quantidade por diâmetro x comprimento)");
     private readonly CheckBox _plates = Check("Chapas (agrupadas por espessura: quantidade, área, peso, pintura)");
     private readonly TextBox _height = new() { Width = 90 };
-    private readonly Label _errors = new() { ForeColor = Color.FromArgb(255, 140, 120), AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
+    private readonly Label _errors = new() { ForeColor = Brand.ErrorText, AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
     private readonly double _suggested;
 
     public MaterialListDialog(MaterialListSettings settings, double suggestedHeight, string version = "")
@@ -71,10 +71,10 @@ public sealed class MaterialListDialog : Form
         Settings = settings;
         _suggested = suggestedHeight;
         Text = "PASB — Lista de material" + (version.Length > 0 ? "  (" + version + ")" : "");
-        BackColor = Back; ForeColor = Text_; Font = new Font("Segoe UI", 9f);
+        BackColor = Back; ForeColor = Text_; Font = Brand.Sans(9f);
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(560, 400);
+        ClientSize = new Size(600, 470);
 
         var col = new FlowLayoutPanel
         {
@@ -102,10 +102,11 @@ public sealed class MaterialListDialog : Form
         col.Controls.Add(_errors);
 
         var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Bottom, Height = 46, BackColor = Back, Padding = new Padding(8) };
-        var ok = Btn("Inserir no desenho"); ok.BackColor = Accent; ok.Width = 150;
+        var ok = Brand.Btn("Inserir no desenho", primary: true); ok.Width = 160;
         var cancel = Btn("Cancelar"); cancel.Width = 90;
         buttons.Controls.Add(ok); buttons.Controls.Add(cancel);
-        Controls.Add(col); Controls.Add(buttons);
+        Controls.Add(Brand.Header("Lista de material", version)); Controls.Add(buttons); Controls.Add(col);
+        col.BringToFront();
         AcceptButton = ok; CancelButton = cancel;
         ok.Click += (_, _) => { if (Collect()) { DialogResult = DialogResult.OK; Close(); } };
         cancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
@@ -139,10 +140,6 @@ public sealed class MaterialListDialog : Form
     private void SetAll(bool v) { foreach (CheckBox c in new[] { _detailed, _summary, _bolts, _anchors, _plates }) c.Checked = v; }
 
     private static CheckBox Check(string t) => new() { Text = t, AutoSize = true, ForeColor = Text_, Margin = new Padding(3, 5, 3, 5) };
-    private static Label Header(string t) => new() { Text = t, AutoSize = true, ForeColor = Muted, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), Margin = new Padding(3, 10, 3, 4) };
-    private static Button Btn(string t) => new()
-    {
-        Text = t, AutoSize = true, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(62, 62, 66), ForeColor = Text_,
-        Margin = new Padding(3), Padding = new Padding(6, 2, 6, 2),
-    };
+    private static Label Header(string t) => Brand.SectionLabel(t);
+    private static Button Btn(string t) => Brand.Btn(t);
 }

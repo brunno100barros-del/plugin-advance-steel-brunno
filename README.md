@@ -32,6 +32,7 @@ Exportar um modelo de estrutura metálica para IFC costuma significar escolher e
 | 🗂️ | **Preservação integral** | Todas as propriedades acessíveis — gerais, herdadas, específicas e User Attributes — sem whitelist fechada |
 | 🌎 | **Georreferenciamento real** | `IfcProjectedCRS` + `IfcMapConversion` a partir de um ponto de controle e do ângulo com o Norte |
 | 🤖 | **Conector IA** | Um assistente de IA (Claude Code) lê o modelo e exporta IFC pelo próprio plugin, só por leitura — [docs/AI-CONNECTOR.md](docs/AI-CONNECTOR.md) |
+| 👁️ | **Identidade Coordix** | Janelas e ícones da aba com a identidade visual Coordix · BIMOFFICE (paleta cobre/ink, IBM Plex quando instalada, símbolo do olho) |
 | 📦 | **Exportador IFC4 próprio** | Não depende do exportador nativo; cada exportação gera um relatório de cobertura e limitações |
 
 ## 🧭 Arquitetura

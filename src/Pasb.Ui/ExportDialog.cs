@@ -16,9 +16,9 @@ namespace Pasb.Ui;
 /// </summary>
 public sealed class ExportDialog : Form
 {
-    private static readonly Color Back = Color.FromArgb(37, 37, 38), Panel = Color.FromArgb(45, 45, 48),
-        Field = Color.FromArgb(30, 30, 30), Text_ = Color.FromArgb(230, 230, 230), Muted = Color.FromArgb(160, 160, 160),
-        Accent = Color.FromArgb(0, 122, 204);
+    private static readonly Color Back = Brand.BgDark, Panel = Brand.Ink,
+        Field = Brand.Field, Text_ = Brand.BgLight, Muted = Brand.Muted,
+        Accent = Brand.Copper;
 
     public ExportSettings Settings { get; }
     public bool PickRequested { get; private set; }
@@ -40,8 +40,8 @@ public sealed class ExportDialog : Form
     private readonly CheckBox _inPlacement = new() { Text = "Aplicar as coordenadas na posição do modelo (recomendado;\nTrimble Connect e outros visualizadores)", AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
     private readonly TextBox _output = Box();
     private readonly Button _browse = Btn("...");
-    private readonly Label _errors = new() { ForeColor = Color.FromArgb(255, 140, 120), AutoSize = false, Dock = DockStyle.Fill };
-    private readonly Button _export = Btn("Exportar IFC"), _cancel = Btn("Cancelar");
+    private readonly Label _errors = new() { ForeColor = Brand.ErrorText, AutoSize = false, Dock = DockStyle.Fill };
+    private readonly Button _export = Brand.Btn("Exportar IFC", primary: true), _cancel = Btn("Cancelar");
 
     private static readonly (string key, string label)[] GroupLabels =
     {
@@ -54,10 +54,10 @@ public sealed class ExportDialog : Form
     {
         Settings = settings;
         Text = "PASB — Exportar para IFC" + (version.Length > 0 ? "  (" + version + ")" : "");
-        BackColor = Back; ForeColor = Text_; Font = new Font("Segoe UI", 9f);
+        BackColor = Back; ForeColor = Text_; Font = Brand.Sans(9f);
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1060, 660);
+        ClientSize = new Size(1060, 724);
         AcceptButton = _export; CancelButton = _cancel;
 
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 2, Padding = new Padding(10), BackColor = Back };
@@ -66,7 +66,9 @@ public sealed class ExportDialog : Form
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));
+        Controls.Add(Brand.Header("Exportar IFC", version));
         Controls.Add(root);
+        root.BringToFront();
 
         // Coluna 1: formato, escopo, projeto
         var c1 = Column();
@@ -82,7 +84,7 @@ public sealed class ExportDialog : Form
 
         // Coluna 2: objetos
         var c2 = Column();
-        c2.Controls.Add(Header("OBJETOS PARA EXPORTAÇÃO"));
+        c2.Controls.Add(Header("Objetos"));
         foreach (var (key, label) in GroupLabels)
         {
             var cb = new CheckBox { Text = label, AutoSize = true, ForeColor = Text_, Margin = new Padding(3, 4, 3, 4) };
@@ -122,15 +124,15 @@ public sealed class ExportDialog : Form
         var foot = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 2, BackColor = Back };
         foot.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         foot.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        foot.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
-        foot.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 230));
+        foot.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 46));
+        foot.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 270));
         foot.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         foot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var outLbl = Caption("Arquivo de saída"); outLbl.Anchor = AnchorStyles.Left;
-        _output.Dock = DockStyle.Fill; _browse.Width = 34;
+        _output.Dock = DockStyle.Fill; _browse.AutoSize = false; _browse.Size = new Size(38, 26); _browse.Padding = new Padding(0);
         foot.Controls.Add(outLbl, 0, 0); foot.Controls.Add(_output, 1, 0); foot.Controls.Add(_browse, 2, 0);
         var buttons = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill, BackColor = Back };
-        _export.BackColor = Accent; _export.Width = 120; _cancel.Width = 90;
+        _export.Width = 130; _cancel.Width = 90;
         buttons.Controls.Add(_export); buttons.Controls.Add(_cancel);
         foot.Controls.Add(buttons, 3, 0);
         foot.Controls.Add(_errors, 0, 1); foot.SetColumnSpan(_errors, 4);
@@ -235,7 +237,7 @@ public sealed class ExportDialog : Form
         BackColor = Panel, Padding = new Padding(10), Margin = new Padding(4),
     };
 
-    private static Label Header(string t) => new() { Text = t, AutoSize = true, ForeColor = Muted, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), Margin = new Padding(3, 12, 3, 4) };
+    private static Label Header(string t) => Brand.SectionLabel(t);
     private static Label Caption(string t) => new() { Text = t, AutoSize = true, ForeColor = Text_, Margin = new Padding(3, 6, 3, 2) };
     private static Label Note(string t) => new() { Text = t, AutoSize = false, Width = 220, Height = 48, ForeColor = Muted, Margin = new Padding(3, 10, 3, 3) };
     private static RadioButton Radio(string t) => new() { Text = t, AutoSize = true, ForeColor = Text_, Margin = new Padding(3, 3, 3, 3) };
@@ -249,11 +251,7 @@ public sealed class ExportDialog : Form
 
     private static void StyleField(Control c) { c.BackColor = Field; c.ForeColor = Text_; }
 
-    private static Button Btn(string t) => new()
-    {
-        Text = t, AutoSize = true, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(62, 62, 66), ForeColor = Text_,
-        Margin = new Padding(3), Padding = new Padding(6, 2, 6, 2),
-    };
+    private static Button Btn(string t) => Brand.Btn(t);
 
     private static FlowLayoutPanel Group(params RadioButton[] radios)
     {
