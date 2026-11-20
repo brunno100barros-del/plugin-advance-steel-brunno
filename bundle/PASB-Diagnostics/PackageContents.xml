@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Manifesto do bundle do diagnostico somente leitura (docs/DIAGNOSTIC-DESIGN.md, secao 9).
+  Manifesto do plugin PASB (Plugin Advance Steel - Brunno).
   - Carrega so no Advance Steel 2027 (Platform ADVS, R26.0).
-  - Carregamento sob demanda: a DLL so entra na memoria quando um comando PASB_DIAG_* e digitado.
+  - Desde a 0.4.0 carrega na inicializacao do AutoCAD, para exibir a aba PASB na faixa de opcoes.
+    A inicializacao so cria a aba; nenhuma leitura do desenho acontece sem um comando PASB_*.
+  - A pasta continua PASB-Diagnostics.bundle para que a atualizacao substitua a instalacao anterior.
 -->
 <ApplicationPackage SchemaVersion="1.0"
                     AutodeskProduct="AutoCAD"
                     ProductType="Application"
-                    Name="PASB Diagnostics"
-                    AppVersion="0.3.0"
-                    FriendlyVersion="0.3.0"
-                    Description="Diagnostico somente leitura de propriedades do Advance Steel 2027 (Plugin Advance Steel - Brunno)."
+                    Name="PASB - Plugin Advance Steel Brunno"
+                    AppVersion="0.4.0"
+                    FriendlyVersion="0.4.0"
+                    Description="Exportacao IFC4 georreferenciada com preservacao de propriedades e diagnostico somente leitura para o Advance Steel 2027."
                     Author="Brunno Barros"
                     SupportedLocales="Enu,Ptb"
                     ProductCode="{4B1BC0F6-C139-4DC5-8B0F-E2B118439C1C}"
@@ -20,20 +22,20 @@
 
   <Components Description="Advance Steel 2027">
     <RuntimeRequirements OS="Win64" Platform="ADVS" SeriesMin="R26.0" SeriesMax="R26.0" />
-    <ComponentEntry AppName="PASB Diagnostics"
-                    Version="0.3.0"
+    <ComponentEntry AppName="PASB"
+                    Version="0.4.0"
                     ModuleName="./Contents/Pasb.Diagnostics.AdvanceSteel.dll"
-                    AppDescription="Diagnostico somente leitura para Advance Steel 2027"
-                    LoadOnCommandInvocation="True"
-                    LoadOnAutoCADStartup="False">
+                    AppDescription="PASB para Advance Steel 2027"
+                    LoadOnCommandInvocation="False"
+                    LoadOnAutoCADStartup="True">
       <AssemblyMappings>
         <AssemblyMappingFolder Path="./Contents" />
       </AssemblyMappings>
       <Commands GroupName="PASB">
+        <Command Global="PASB_EXPORTAR_IFC" Local="PASB_EXPORTAR_IFC" />
         <Command Global="PASB_DIAG_VERSION" Local="PASB_DIAG_VERSION" />
         <Command Global="PASB_DIAG_SEL"     Local="PASB_DIAG_SEL" />
         <Command Global="PASB_DIAG_ALL"     Local="PASB_DIAG_ALL" />
-        <Command Global="PASB_EXPORTAR_IFC" Local="PASB_EXPORTAR_IFC" />
       </Commands>
     </ComponentEntry>
   </Components>

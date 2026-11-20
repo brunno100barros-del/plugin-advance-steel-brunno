@@ -1,14 +1,16 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Windows.Forms;
 using Autodesk.AdvanceSteel.CADAccess;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
-using Pasb.Georeferencing;
 using Pasb.IfcExport;
 using Pasb.Model;
+using Pasb.Ui;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 using AcDoc = Autodesk.AutoCAD.ApplicationServices.Document;
 using AsId = Autodesk.AdvanceSteel.CADLink.Database.ObjectId;
@@ -18,12 +20,12 @@ using AsId = Autodesk.AdvanceSteel.CADLink.Database.ObjectId;
 namespace Pasb.Diagnostics.AdvanceSteel;
 
 /// <summary>
-/// PASB_EXPORTAR_IFC (Etapa 6): lê o modelo com o diagnóstico validado, converte para o modelo neutro
-/// e grava o IFC4 georreferenciado. Perguntas na linha de comando. Não altera o modelo.
+/// PASB_EXPORTAR_IFC: abre a janela de exportação, permite escolher o ponto base no modelo,
+/// lê o modelo pelo caminho validado do diagnóstico e grava o IFC4. Não altera o modelo.
 /// </summary>
 public sealed class ExportCommand
 {
-    [CommandMethod("PASB", "PASB_EXPORTAR_IFC", CommandFlags.Modal)]
+    [CommandMethod("PASB", "PASB_EXPORTAR_IFC", CommandFlags.Modal | CommandFlags.UsePickSet)]
     public void ExportIfc()
     {
         AcDoc? doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -31,50 +33,76 @@ public sealed class ExportCommand
         Editor ed = doc.Editor;
         try
         {
-            string unitName = doc.Database.Insunits.ToString();
-            if (!string.Equals(unitName, "Millimeters", StringComparison.OrdinalIgnoreCase))
-                ed.WriteMessage($"\nPASB: ATENÇÃO: unidade do desenho '{unitName}' não validada (esperado milímetros). A geometria pode sair sem conversão.");
-            const double unitToMeters = 0.001;
+            double unit = UnitToMeters(doc.Database.Insunits.ToString(), out bool unitKnown);
+            if (!unitKnown)
+                ed.WriteMessage($"\nPASB: ATENÇÃO: unidade do desenho '{doc.Database.Insunits}' não validada; assumindo milímetros.");
 
-            // 1. Georreferenciamento
-            GeoParameters? geo = AskGeoreference(ed, unitToMeters);
-            if (geo == null && Cancelled) { ed.WriteMessage("\nPASB: exportação cancelada.\n"); return; }
+            ExportSettings settings = ExportSettings.Load();
+            if (string.IsNullOrWhiteSpace(settings.OutputPath) || !Directory.Exists(Path.GetDirectoryName(settings.OutputPath)))
+                settings.OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    Path.ChangeExtension(Path.GetFileName(doc.Name), ".ifc"));
+            else
+                settings.OutputPath = Path.Combine(Path.GetDirectoryName(settings.OutputPath)!, Path.ChangeExtension(Path.GetFileName(doc.Name), ".ifc"));
 
-            // 2. Arquivo de saída
-            string defaultName = Path.ChangeExtension(Path.GetFileName(doc.Name), ".ifc");
-            var save = new PromptSaveFileOptions("\nSalvar IFC como: ")
+            // Janela ↔ seleção do ponto base (a janela fecha, o usuário clica, a janela reabre)
+            while (true)
             {
-                Filter = "IFC (*.ifc)|*.ifc",
-                InitialFileName = defaultName,
-                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                DialogCaption = "Exportar IFC4 (PASB)",
-            };
-            PromptFileNameResult file = ed.GetFileNameForSave(save);
-            if (file.Status != PromptStatus.OK) { ed.WriteMessage("\nPASB: exportação cancelada.\n"); return; }
+                using var dlg = new ExportDialog(settings, Version);
+                DialogResult res = Autodesk.AutoCAD.ApplicationServices.Application.ShowModalDialog(dlg);
+                if (res == DialogResult.Retry && dlg.PickRequested)
+                {
+                    PromptPointResult pt = ed.GetPoint(new PromptPointOptions("\nPASB: clique no ponto base (ponto de coordenada conhecida): "));
+                    if (pt.Status == PromptStatus.OK)
+                    {
+                        Point3d w = pt.Value.TransformBy(ed.CurrentUserCoordinateSystem);   // UCS → WCS
+                        settings.BaseX = w.X; settings.BaseY = w.Y; settings.BaseZ = w.Z;
+                        ed.WriteMessage($"\nPASB: ponto base = ({w.X:0.###}, {w.Y:0.###}, {w.Z:0.###})");
+                    }
+                    continue;
+                }
+                if (res != DialogResult.OK) { ed.WriteMessage("\nPASB: exportação cancelada.\n"); return; }
+                break;
+            }
+            settings.Save();
 
-            // 3. Leitura do modelo (mesmo caminho validado do PASB_DIAG_ALL: escrita descartada, DBMOD conferido)
-            var (outDir, safe) = Commands.Run(ed, "PASB_EXPORTAR_IFC", () =>
+            // Objetos: modelo inteiro ou seleção
+            Func<(AsId[] ids, int nonSteel)> collect;
+            if (settings.Scope == ExportScope.Selection)
             {
-                DatabaseManager.GetModelObjectIds(out AsId[] ids);
-                return (ids ?? Array.Empty<AsId>(), 0);
-            });
-            if (!safe)
+                PromptSelectionResult sel = ed.SelectImplied();
+                if (sel.Status != PromptStatus.OK || sel.Value == null)
+                    sel = ed.GetSelection(new PromptSelectionOptions { MessageForAdding = "\nPASB: selecione os objetos para exportar: " });
+                if (sel.Status != PromptStatus.OK || sel.Value == null) { ed.WriteMessage("\nPASB: nenhum objeto selecionado.\n"); return; }
+                var cadIds = sel.Value.GetObjectIds();
+                collect = () => Commands.FromCad(cadIds);
+            }
+            else
             {
-                ed.WriteMessage("\nPASB: exportação interrompida porque a verificação de integridade do modelo falhou. Feche o desenho SEM SALVAR.\n");
-                return;
+                collect = () => { DatabaseManager.GetModelObjectIds(out AsId[] ids); return (ids ?? Array.Empty<AsId>(), 0); };
             }
 
-            // 4. Modelo neutro + IFC
+            // Leitura (escrita descartada, DBMOD conferido) → modelo neutro → IFC
+            var (outDir, safe) = Commands.Run(ed, "PASB_EXPORTAR_IFC", collect);
+            if (!safe)
+            {
+                ed.WriteMessage("\nPASB: exportação interrompida: a verificação de integridade do modelo falhou. Feche o desenho SEM SALVAR.\n");
+                return;
+            }
             Extraction x = DiagnosticImporter.ImportDirectory(outDir);
             x.SourceDocument.Name = Path.GetFileName(doc.Name);
-            string ifc = IfcExporter.Export(x, new ExportOptions(Path.GetFileNameWithoutExtension(doc.Name), Path.GetFileName(file.StringResult), geo), out ExportReport report);
-            File.WriteAllText(file.StringResult, ifc, new UTF8Encoding(false));
-            string reportPath = Path.ChangeExtension(file.StringResult, ".report.json");
+            string ifc = IfcExporter.Export(x, settings.ToExportOptions(unit), out ExportReport report);
+            File.WriteAllText(settings.OutputPath, ifc, new UTF8Encoding(false));
+            string reportPath = Path.ChangeExtension(settings.OutputPath, ".report.json");
             File.WriteAllText(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
 
-            ed.WriteMessage($"\nPASB: IFC gravado em {file.StringResult}");
-            foreach (var kv in report.ExportedByIfcClass) ed.WriteMessage($"\nPASB:   {kv.Key}: {kv.Value}");
-            ed.WriteMessage($"\nPASB: {report.Properties} propriedades em {report.PropertySets} Psets. Relatório: {reportPath}\n");
+            var summary = new StringBuilder();
+            summary.AppendLine("IFC gravado em:").AppendLine(settings.OutputPath).AppendLine();
+            foreach (var kv in report.ExportedByIfcClass) summary.AppendLine($"{kv.Key}: {kv.Value}");
+            foreach (var kv in report.SkippedByCategory) summary.AppendLine($"Não exportado ({kv.Key}): {kv.Value}");
+            summary.AppendLine().AppendLine($"{report.Properties} propriedades em {report.PropertySets} Psets.");
+            if (report.Georeference != null) summary.AppendLine($"Georreferência: {report.Georeference["crs"]}");
+            ed.WriteMessage("\nPASB: " + summary.ToString().Replace(Environment.NewLine, "\nPASB: ") + "\n");
+            MessageBox.Show(summary.ToString(), "PASB — Exportação concluída", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (System.Exception ex)
         {
@@ -82,95 +110,17 @@ public sealed class ExportCommand
         }
     }
 
-    private static bool Cancelled;
+    private static string Version =>
+        typeof(ExportCommand).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "";
 
-    /// <summary>Pergunta o modo e os parâmetros. Retorna null para "sem georreferenciamento" (Cancelled = false) ou cancelamento (Cancelled = true).</summary>
-    private static GeoParameters? AskGeoreference(Editor ed, double unitToMeters)
+    /// <summary>INSUNITS → metros. Só milímetros foi validado nos testes; os demais são conversões diretas.</summary>
+    internal static double UnitToMeters(string insunits, out bool validated)
     {
-        Cancelled = false;
-        var mode = new PromptKeywordOptions("\nGeorreferenciamento [Sirgas/Local/Nenhum] <Sirgas>: ") { AllowNone = true };
-        mode.Keywords.Add("Sirgas"); mode.Keywords.Add("Local"); mode.Keywords.Add("Nenhum");
-        PromptResult m = ed.GetKeywords(mode);
-        if (m.Status == PromptStatus.Cancel) { Cancelled = true; return null; }
-        string kw = m.Status == PromptStatus.None || string.IsNullOrEmpty(m.StringResult) ? "Sirgas" : m.StringResult;
-        if (kw == "Nenhum") return null;
-
-        while (true)
+        validated = string.Equals(insunits, "Millimeters", StringComparison.OrdinalIgnoreCase);
+        return insunits switch
         {
-            PromptPointResult pt = ed.GetPoint(new PromptPointOptions("\nClique no ponto de controle (ponto conhecido) no modelo: "));
-            if (pt.Status != PromptStatus.OK) { Cancelled = true; return null; }
-            Point3d w = pt.Value.TransformBy(ed.CurrentUserCoordinateSystem);   // UCS → WCS
-            var model = new Pasb.Georeferencing.Point3(w.X, w.Y, w.Z);
-
-            GeoParameters p;
-            if (kw == "Sirgas")
-            {
-                int? zone = AskInt(ed, "\nZona UTM (ex.: 22): ", 22); if (zone is null) { Cancelled = true; return null; }
-                var hemi = new PromptKeywordOptions("\nHemisfério [Sul/Norte] <Sul>: ") { AllowNone = true };
-                hemi.Keywords.Add("Sul"); hemi.Keywords.Add("Norte");
-                PromptResult h = ed.GetKeywords(hemi);
-                if (h.Status == PromptStatus.Cancel) { Cancelled = true; return null; }
-                Hemisphere hs = h.StringResult == "Norte" ? Hemisphere.North : Hemisphere.South;
-                double? e = AskDouble(ed, "\nCoordenada E (Leste) do ponto, em metros: "); if (e is null) { Cancelled = true; return null; }
-                double? n = AskDouble(ed, "\nCoordenada N (Norte) do ponto, em metros: "); if (n is null) { Cancelled = true; return null; }
-                double? hh = AskDouble(ed, "\nCota (altitude) do ponto, em metros <0>: ", 0); if (hh is null) { Cancelled = true; return null; }
-                double? rot = AskRotation(ed); if (rot is null) { Cancelled = true; return null; }
-                p = new GeoParameters(GeoMode.SirgasUtm, model, new Pasb.Georeferencing.Point3(e.Value, n.Value, hh.Value), rot.Value, unitToMeters, zone, hs);
-            }
-            else
-            {
-                PromptResult name = ed.GetString(new PromptStringOptions("\nNome do sistema de coordenadas da obra: ") { AllowSpaces = true });
-                if (name.Status != PromptStatus.OK) { Cancelled = true; return null; }
-                double? x = AskDouble(ed, "\nCoordenada X do ponto no sistema da obra, em metros: "); if (x is null) { Cancelled = true; return null; }
-                double? y = AskDouble(ed, "\nCoordenada Y do ponto no sistema da obra, em metros: "); if (y is null) { Cancelled = true; return null; }
-                double? z = AskDouble(ed, "\nCoordenada Z do ponto, em metros <0>: ", 0); if (z is null) { Cancelled = true; return null; }
-                double? rot = AskRotation(ed); if (rot is null) { Cancelled = true; return null; }
-                p = new GeoParameters(GeoMode.LocalXyz, model, new Pasb.Georeferencing.Point3(x.Value, y.Value, z.Value), rot.Value, unitToMeters,
-                    LocalCrsName: name.StringResult);
-            }
-
-            var errors = Georeference.Validate(p);
-            if (errors.Count == 0)
-            {
-                ed.WriteMessage($"\nPASB: ponto de controle ({w.X:0.###}, {w.Y:0.###}, {w.Z:0.###}) → ({p.TargetPoint.X:0.###}, {p.TargetPoint.Y:0.###}, {p.TargetPoint.Z:0.###}) m, rotação {p.RotationDegrees:0.####}°.");
-                return p;
-            }
-            foreach (string err in errors) ed.WriteMessage("\nPASB: " + err);
-            ed.WriteMessage("\nPASB: corrija os dados e informe novamente.");
-        }
-    }
-
-    /// <summary>Ângulo: rotação anti-horária do X do modelo até o Leste, ou azimute horário do +Y do modelo a partir do Norte.</summary>
-    private static double? AskRotation(Editor ed)
-    {
-        var o = new PromptKeywordOptions("\nComo informar o ângulo [Rotacao/Azimute] <Rotacao>: ") { AllowNone = true };
-        o.Keywords.Add("Rotacao"); o.Keywords.Add("Azimute");
-        PromptResult r = ed.GetKeywords(o);
-        if (r.Status == PromptStatus.Cancel) return null;
-        if (r.StringResult == "Azimute")
-        {
-            double? az = AskDouble(ed, "\nAzimute do eixo +Y do modelo (graus, horário a partir do Norte) <0>: ", 0);
-            return az is null ? null : GeoParameters.RotationFromModelNorthAzimuth(az.Value);
-        }
-        return AskDouble(ed, "\nRotação do eixo X do modelo até o Leste (graus, anti-horário) <0>: ", 0);
-    }
-
-    private static double? AskDouble(Editor ed, string msg, double? def = null)
-    {
-        var o = new PromptDoubleOptions(msg) { AllowNone = def.HasValue };
-        if (def.HasValue) { o.DefaultValue = def.Value; o.UseDefaultValue = true; }
-        PromptDoubleResult r = ed.GetDouble(o);
-        if (r.Status == PromptStatus.OK) return r.Value;
-        if (r.Status == PromptStatus.None && def.HasValue) return def.Value;
-        return null;
-    }
-
-    private static int? AskInt(Editor ed, string msg, int def)
-    {
-        var o = new PromptIntegerOptions(msg) { AllowNone = true, DefaultValue = def, UseDefaultValue = true, LowerLimit = 1, UpperLimit = 60 };
-        PromptIntegerResult r = ed.GetInteger(o);
-        if (r.Status == PromptStatus.OK) return r.Value;
-        if (r.Status == PromptStatus.None) return def;
-        return null;
+            "Millimeters" => 0.001, "Centimeters" => 0.01, "Meters" => 1.0, "Inches" => 0.0254, "Feet" => 0.3048,
+            _ => 0.001,
+        };
     }
 }

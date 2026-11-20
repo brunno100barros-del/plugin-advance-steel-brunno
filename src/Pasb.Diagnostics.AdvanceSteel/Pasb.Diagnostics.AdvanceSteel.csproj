@@ -13,7 +13,8 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Pasb.Diagnostics.AdvanceSteel</RootNamespace>
     <AssemblyName>Pasb.Diagnostics.AdvanceSteel</AssemblyName>
-    <UseWindowsForms>false</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GenerateDependencyFile>false</GenerateDependencyFile>
@@ -27,12 +28,14 @@
     <ProjectReference Include="..\Pasb.Model\Pasb.Model.csproj" />
     <ProjectReference Include="..\Pasb.Georeferencing\Pasb.Georeferencing.csproj" />
     <ProjectReference Include="..\Pasb.IfcExport\Pasb.IfcExport.csproj" />
+    <ProjectReference Include="..\Pasb.Ui\Pasb.Ui.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="accoremgd"><HintPath>$(AcadDir)\accoremgd.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="acdbmgd"><HintPath>$(AcadDir)\acdbmgd.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="acmgd"><HintPath>$(AcadDir)\acmgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AdWindows"><HintPath>$(AcadDir)\AdWindows.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="ASMgd"><HintPath>$(AdvsDir)\ASMgd.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="ASCADLinkMgd"><HintPath>$(AdvsDir)\ASCADLinkMgd.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="ASGeometryMgd"><HintPath>$(AdvsDir)\ASGeometryMgd.dll</HintPath><Private>False</Private></Reference>

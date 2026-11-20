@@ -24,7 +24,29 @@ public sealed class ExportReport
     public string GlobalIdPolicy { get; set; } = "";
 }
 
-public sealed record ExportOptions(string ProjectName = "Projeto Advance Steel", string FileName = "modelo.ifc", GeoParameters? Geo = null);
+public sealed record ExportOptions(string ProjectName = "Projeto Advance Steel", string FileName = "modelo.ifc", GeoParameters? Geo = null)
+{
+    public string SiteName { get; init; } = "Site";
+    public string BuildingName { get; init; } = "Building";
+    public string StoreyName { get; init; } = "Estrutura";
+    /// <summary>Grupos de objetos a exportar (ver <see cref="ObjectGroups"/>); nulo = todos.</summary>
+    public IReadOnlySet<string>? IncludedGroups { get; init; }
+}
+
+/// <summary>Grupos de objetos exibidos na janela de exportação e sua relação com as categorias do modelo neutro.</summary>
+public static class ObjectGroups
+{
+    public const string Beams = "beams", Plates = "plates", Bolts = "bolts", Anchors = "anchors", Welds = "welds",
+        SpecialParts = "special_parts", Joints = "joints", Others = "others";
+
+    public static readonly string[] All = { Beams, Plates, Bolts, Anchors, Welds, SpecialParts, Joints, Others };
+
+    public static string Of(string category) => category switch
+    {
+        "beam" => Beams, "plate" => Plates, "bolts" => Bolts, "anchors" => Anchors, "weld" => Welds,
+        "special_part" => SpecialParts, "joint" or "connection" or "joint_parameters" => Joints, _ => Others,
+    };
+}
 
 /// <summary>
 /// Exportador IFC4 a partir do modelo neutro. Regras:
@@ -79,11 +101,11 @@ public static class IfcExporter
 
         // ---------- Estrutura espacial
         int sitePl = w.Add("IfcLocalPlacement", Null, Ref(wcs));
-        int site = w.Add("IfcSite", Str(Gid("site")), Null, Str("Site"), Null, Null, Ref(sitePl), Null, Null, Enum("ELEMENT"), Null, Null, Null, Null, Null);
+        int site = w.Add("IfcSite", Str(Gid("site")), Null, Str(opt.SiteName), Null, Null, Ref(sitePl), Null, Null, Enum("ELEMENT"), Null, Null, Null, Null, Null);
         int bldPl = w.Add("IfcLocalPlacement", Ref(sitePl), Ref(wcs));
-        int building = w.Add("IfcBuilding", Str(Gid("building")), Null, Str("Building"), Null, Null, Ref(bldPl), Null, Null, Enum("ELEMENT"), Null, Null, Null);
+        int building = w.Add("IfcBuilding", Str(Gid("building")), Null, Str(opt.BuildingName), Null, Null, Ref(bldPl), Null, Null, Enum("ELEMENT"), Null, Null, Null);
         int stPl = w.Add("IfcLocalPlacement", Ref(bldPl), Ref(wcs));
-        int storey = w.Add("IfcBuildingStorey", Str(Gid("storey")), Null, Str("Estrutura"), Null, Null, Ref(stPl), Null, Null, Enum("ELEMENT"), Real(0));
+        int storey = w.Add("IfcBuildingStorey", Str(Gid("storey")), Null, Str(opt.StoreyName), Null, Null, Ref(stPl), Null, Null, Enum("ELEMENT"), Real(0));
         w.Add("IfcRelAggregates", Str(Gid("agg-project")), Null, Null, Null, Ref(project), "(" + Ref(site) + ")");
         w.Add("IfcRelAggregates", Str(Gid("agg-site")), Null, Null, Null, Ref(site), "(" + Ref(building) + ")");
         w.Add("IfcRelAggregates", Str(Gid("agg-building")), Null, Null, Null, Ref(building), "(" + Ref(storey) + ")");
@@ -98,6 +120,11 @@ public static class IfcExporter
 
         foreach (NeutralElement e in x.Elements)
         {
+            if (opt.IncludedGroups is { } groupsIn && e.Category != "internal" && !groupsIn.Contains(ObjectGroups.Of(e.Category)))
+            {
+                Count(r.SkippedByCategory, "filtrado:" + e.Category);
+                continue;
+            }
             string gid = ElementGid(e);
             string name = NameOf(e);
             int id;

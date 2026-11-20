@@ -223,6 +223,8 @@ Isso segue a regra de [ARCHITECTURE.md](../ARCHITECTURE.md): só o adapter Autod
 - **Carregamento sob demanda:** o manifesto usa `LoadOnCommandInvocation="True"` e `LoadOnAutoCADStartup="False"`, com os três comandos declarados. A DLL só é carregada quando um comando `PASB_DIAG_*` é digitado. Se, no teste, os comandos não forem reconhecidos, a alternativa é carregar na inicialização (`LoadOnAutoCADStartup="True"`), como faz o SteelX.
 - **Verificação automática de `DBMOD`:** o comando grava `DBMOD` antes e depois em `run.json` e avisa na linha de comando se o valor mudar.
 
+- **Revisão (versão 0.4.0, 2026-11-20):** para exibir a aba PASB na faixa de opções, pedido do desenvolvedor, o manifesto passou a `LoadOnAutoCADStartup="True"`. O `Initialize` só cria a aba (`PasbRibbon`); nenhuma leitura do desenho acontece sem um comando `PASB_*`.
+
 ### 9.2 Cuidados por ficar carregado em toda sessão
 
 1. **Inicialização vazia:** `Initialize()` não lê o desenho, não abre arquivos, não cria janelas e não registra eventos. Só os comandos existem.

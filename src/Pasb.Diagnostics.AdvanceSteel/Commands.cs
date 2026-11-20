@@ -83,7 +83,7 @@ public sealed class Commands
     }
 
     /// <summary>Converte a seleção do AutoCAD em objetos do Advance Steel; entidades comuns são contadas e ignoradas.</summary>
-    private static (AsId[] ids, int nonSteel) FromCad(AcId[] cadIds)
+    internal static (AsId[] ids, int nonSteel) FromCad(AcId[] cadIds)
     {
         var result = new List<AsId>();
         int nonSteel = 0;

@@ -13,18 +13,28 @@ Diagnóstico **somente leitura** das propriedades dos objetos do Advance Steel. 
 | `PASB_DIAG_ALL` | Diagnostica todos os objetos do modelo |
 | `PASB_EXPORTAR_IFC` | Exporta o modelo inteiro para IFC4 georreferenciado (versão 0.3.0) |
 
-### `PASB_EXPORTAR_IFC`
-1. Escolha o georreferenciamento: `Sirgas` (SIRGAS 2000 / UTM), `Local` (X, Y, Z da obra) ou `Nenhum`.
-2. Clique no **ponto de controle** no modelo. A UCS atual é convertida para coordenadas globais.
-3. Informe:
-   - **Sirgas:** zona e hemisfério; E, N e cota em metros;
-   - **Local:** nome do sistema; X, Y e Z em metros.
-4. Informe o ângulo de uma destas formas:
-   - `Rotacao`: anti-horária, do eixo X do modelo até o Leste;
-   - `Azimute`: horário, do Norte até o eixo +Y do modelo.
-5. Escolha onde salvar o `.ifc`. O relatório `.report.json` é gravado ao lado.
+### Aba PASB (versão 0.4.0)
+Ao abrir o Advance Steel 2027, aparece a aba **PASB** na faixa de opções com os botões **Exportar IFC**, **Diagnóstico seleção**, **Diagnóstico modelo** e **Sobre**. Por isso o plugin carrega na inicialização. Ao abrir, ele só cria a aba e não lê o desenho.
 
-A leitura usa o mesmo caminho do `PASB_DIAG_ALL`: escrita descartada e `DBMOD` conferido. Se a verificação falhar, a exportação é interrompida. A saída do diagnóstico fica em `Documentos\PASB-Diagnostics\<data-hora>\`, para auditoria.
+### `PASB_EXPORTAR_IFC` (botão "Exportar IFC")
+Abre a janela de exportação:
+
+| Área | Opções |
+|---|---|
+| Formato | IFC4 (IFC2x3 aparece desabilitado: ainda não implementado) |
+| Escopo | Modelo inteiro ou Seleção (pede a seleção depois de confirmar) |
+| Dados do projeto | Nome do projeto, Site, Edifício |
+| Objetos | Vigas e pilares, Chapas, Parafusos, Chumbadores, Soldas, Peças especiais, Ligações, Outros |
+| Georreferência | Sem georreferência, SIRGAS 2000 / UTM (zona, hemisfério) ou Coordenadas X, Y, Z da obra (nome do sistema) |
+| Ponto base | Botão **Selecionar...**: a janela some, você clica no ponto no modelo e a janela volta com as coordenadas (UCS convertida para globais) |
+| Coordenadas reais | X/E, Y/N e Z, em metros (aceita vírgula ou ponto) |
+| Ângulo | Rotação (anti-horária, do X do modelo até o Leste) ou Azimute (horário, do Norte até o +Y do modelo) |
+| Arquivo de saída | Caminho do `.ifc`; o relatório `.report.json` é gravado ao lado |
+
+- Erros (por exemplo, coordenada UTM implausível) aparecem no rodapé e impedem a exportação.
+- A janela **lembra a última configuração** em `%APPDATA%\PASB\export-settings.json`.
+- A leitura usa o mesmo caminho validado do `PASB_DIAG_ALL`: escrita descartada e `DBMOD` conferido. Se a verificação falhar, a exportação é interrompida.
+- A saída do diagnóstico fica em `Documentos\PASB-Diagnostics\<data-hora>\`, para auditoria.
 
 Saída em `Documentos\PASB-Diagnostics\<data-hora>\`: `objects.jsonl`, `run.json` e `coverage.csv`.
 

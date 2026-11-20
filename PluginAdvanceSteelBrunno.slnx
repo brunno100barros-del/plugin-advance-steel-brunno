@@ -7,12 +7,14 @@
     <Project Path="src/Pasb.Model/Pasb.Model.csproj" />
     <Project Path="src/Pasb.Georeferencing/Pasb.Georeferencing.csproj" />
     <Project Path="src/Pasb.IfcExport/Pasb.IfcExport.csproj" />
+    <Project Path="src/Pasb.Ui/Pasb.Ui.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Pasb.Diagnostics.Core.Tests/Pasb.Diagnostics.Core.Tests.csproj" />
     <Project Path="tests/Pasb.Model.Tests/Pasb.Model.Tests.csproj" />
     <Project Path="tests/Pasb.Georeferencing.Tests/Pasb.Georeferencing.Tests.csproj" />
     <Project Path="tests/Pasb.IfcExport.Tests/Pasb.IfcExport.Tests.csproj" />
+    <Project Path="tests/Pasb.Ui.Tests/Pasb.Ui.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/ApiInventory/ApiInventory.csproj" />

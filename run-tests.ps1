@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Roda todos os testes automáticos do projeto (sem Advance Steel).
 
@@ -7,7 +7,7 @@
 #>
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'; $env:DOTNET_NOLOGO = '1'
-$projects = 'tests\Pasb.Diagnostics.Core.Tests', 'tests\Pasb.Model.Tests', 'tests\Pasb.Georeferencing.Tests', 'tests\Pasb.IfcExport.Tests'
+$projects = 'tests\Pasb.Diagnostics.Core.Tests', 'tests\Pasb.Model.Tests', 'tests\Pasb.Georeferencing.Tests', 'tests\Pasb.IfcExport.Tests', 'tests\Pasb.Ui.Tests'
 $failed = 0
 foreach ($p in $projects) {
     Write-Host "=== $p"
