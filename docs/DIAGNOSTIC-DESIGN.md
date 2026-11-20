@@ -1,6 +1,6 @@
 # Projeto do diagnóstico de propriedades (dentro do Advance Steel)
 
-Status: projeto. Nada implementado ou executado. Complementa a seção 3 de [DIAGNOSTIC-TOOL-PLAN.md](DIAGNOSTIC-TOOL-PLAN.md).
+Status: **implementado e compilado** em 2026-11-19 (`src/Pasb.Diagnostics.*`, `bundle/`); testes automáticos do núcleo passando (12/12). **Ainda não executado dentro do Advance Steel** e bundle ainda não instalado. Complementa a seção 3 de [DIAGNOSTIC-TOOL-PLAN.md](DIAGNOSTIC-TOOL-PLAN.md).
 
 Data: 2026-11-19
 
@@ -213,6 +213,9 @@ Isso segue a regra de [ARCHITECTURE.md](../ARCHITECTURE.md): só o adapter Autod
 - O bundle é carregado pelo autoloader do AutoCAD. Por isso o ponto de entrada usa as interfaces do AutoCAD (`Autodesk.AutoCAD.Runtime.IExtensionApplication` e `CommandMethod`), como o Loader do MCP, e o projeto referencia `accoremgd`, `acdbmgd` e `acmgd` (`Private=False`), além das assemblies do Advance Steel.
 - Pasta: `%APPDATA%\Autodesk\ApplicationPlugins\PASB-Diagnostics.bundle\`, com `PackageContents.xml` e a DLL em `Contents\`. O `PackageContents.xml` restringe o carregamento ao Advance Steel 2027 com `RuntimeRequirements OS="Win64" Platform="ADVS" SeriesMin="R26.0" SeriesMax="R26.0"`, o mesmo formato do bundle do SteelX instalado neste computador. Assim o add-in não carrega no AutoCAD puro nem em outras versões.
 - A instalação e a remoção do bundle são feitas só com autorização explícita do desenvolvedor, e cada uma é registrada.
+
+- **Carregamento sob demanda:** o manifesto usa `LoadOnCommandInvocation="True"` e `LoadOnAutoCADStartup="False"`, com os três comandos declarados. A DLL só é carregada quando um comando `PASB_DIAG_*` é digitado. Se, no teste, os comandos não forem reconhecidos, a alternativa é carregar na inicialização (`LoadOnAutoCADStartup="True"`), como faz o SteelX.
+- **Verificação automática de `DBMOD`:** o comando grava `DBMOD` antes e depois em `run.json` e avisa na linha de comando se o valor mudar.
 
 ### 9.2 Cuidados por ficar carregado em toda sessão
 

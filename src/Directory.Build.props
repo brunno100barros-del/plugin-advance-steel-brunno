@@ -1,0 +1,14 @@
+<Project>
+  <!-- Configuração comum aos projetos em src/. -->
+  <PropertyGroup>
+    <AcadDir Condition="'$(AcadDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2027</AcadDir>
+    <AdvsDir>$(AcadDir)\ADVS</AdvsDir>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Authors>Brunno Barros</Authors>
+    <Product>Plugin Advance Steel - Brunno</Product>
+  </PropertyGroup>
+</Project>
