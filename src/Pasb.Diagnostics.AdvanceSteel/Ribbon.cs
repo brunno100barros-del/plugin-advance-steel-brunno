@@ -56,6 +56,8 @@ internal static class PasbRibbon
             "Exporta o modelo para IFC4 georreferenciado, com todas as propriedades do Advance Steel."),
             Large("Importar\nIFC", "PASB_IMPORTAR_IFC", "IMP", false,
             "Importa qualquer IFC como sólidos (plotam) ou malhas (leves), com níveis, cores por nível, layers e blocos.")));
+        tab.Panels.Add(Panel("Numeração", Large("Numerar\nitens", "PASB_NUMERAR_ITENS", "Nº", false,
+            "Numeração itemizada, como no Revit: peças iguais ganham o mesmo item (vigas por perfil, chapas por espessura, parafusos por diâmetro x comprimento), com prévia e filtros antes de gravar.")));
         tab.Panels.Add(Panel("Listas", Large("Lista de\nmaterial", "PASB_LISTA_MATERIAL", "LM", false,
             "Lê o modelo (sem alterá-lo) e insere no desenho uma tabela com perfis, chapas e parafusos: comprimento, quantidade, peso e pintura.")));
         tab.Panels.Add(Panel("Diagnóstico",

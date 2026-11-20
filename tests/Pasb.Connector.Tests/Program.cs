@@ -34,6 +34,9 @@ internal static class Program
     [STAThread]
     private static int Main()
     {
+        // Criar janelas (teste da numeração) instalaria um contexto que exige laço de mensagens; sem ele os testes
+        // assíncronos seguintes ficariam esperando para sempre.
+        System.Windows.Forms.WindowsFormsSynchronizationContext.AutoInstall = false;
         Directory.CreateDirectory(Temp);
         try
         {
@@ -208,6 +211,78 @@ internal static class Program
             True(MaterialTables.TryParseKind("profile_summary", out var k) && k == MaterialTableKind.ProfileSummary && !MaterialTables.TryParseKind("xyz", out _), "nomes do conector");
             JsonObject j = MaterialTables.ToJson(s);
             True(j["columns"]!.AsArray().Count == 8 && j["rows"]!.AsArray().Count == 2, "json da tabela");
+        });
+
+        Run("numeração itemizada: itens por espessura, perfil e diâmetro x comprimento", () =>
+        {
+            static string P(string tn, string dt, string v, string? arg = null) =>
+                "{\"technicalName\":\"" + tn + "\",\"declaringType\":\"" + dt + "\"" + (arg != null ? ",\"argument\":\"" + arg + "\"" : "") + ",\"status\":\"Read\",\"rawValue\":" + v + "}";
+            static string E(string h, string cls, string inh, params string[] props) =>
+                "{\"handle\":\"" + h + "\",\"clrType\":\"A." + cls + "\",\"inheritance\":[\"" + cls + "\"," + inh + "\"AtomicElement\",\"FilerObject\"],\"properties\":[" + string.Join(",", props) + "]}";
+            string beam(string h, string sec, string mat = "S235", string note = "\"\"", string cls = "StraightBeam") =>
+                E(h, cls, "\"Beam\",", P("ProfSectionName", "Beam", "\"" + sec + "\""), P("Material", "AtomicElement", "\"" + mat + "\""), P("Note", "AtomicElement", note), P("GetUserAttribute", "AtomicElement", "\"" + (h == "B3" ? "SAIR" : "") + "\"", "0"));
+            string plate(string h, double t, string cls = "Plate") => E(h, cls, "\"PlateBase\",", P("Thickness", "PlateBase", t.ToString(System.Globalization.CultureInfo.InvariantCulture)), P("Material", "AtomicElement", "\"S275\""));
+            string bolt(string h, double d, double l, string cls = "FinitRectScrewBoltPattern", string inh = "\"ScrewBoltPattern\",\"BoltPattern\",") =>
+                E(h, cls, inh, P("ScrewDiameter", "ScrewBoltPattern", d.ToString(System.Globalization.CultureInfo.InvariantCulture)), P("ScrewLength", "ScrewBoltPattern", l.ToString(System.Globalization.CultureInfo.InvariantCulture)), P("Grade", "ScrewBoltPattern", "\"10.9\""));
+            string compound = E("C1", "CompoundStraightBeam", "\"CompoundBeam\",\"Beam\",", P("ProfSectionName", "Beam", "\"Default\""), P("CompoundClassName", "CompoundBeam", "\"Compound2U\""));
+            Extraction x = DiagnosticImporter.Import(Run_, new[]
+            {
+                beam("B1", "U100"), beam("B2", "U100"), beam("B3", "U100"), beam("B4", "W200x15"), beam("B5", "U100", cls: "BentBeam"), compound,
+                plate("P1", 4.75), plate("P2", 4.75), plate("P3", 12.5), plate("P4", 4.75, "FoldedPlate"),
+                bolt("S1", 12, 35), bolt("S2", 12, 35), bolt("S3", 16, 50), bolt("A1", 20, 400, "AnchorPattern", "\"ScrewBoltPattern\",\"BoltPattern\","),
+                E("W1", "WeldLine", "\"WeldPattern\","),
+            });
+            var o = new ItemOptions();
+            ItemResult r = ItemNumbering.Compute(x, o);
+            string Show(ItemResult rr) => string.Join(" | ", rr.Rows.Select(w => $"{w.Mark}:{ItemNumbering.CategoryName(w.Category)} {w.Type} x{w.Quantity}"));
+            // Ordem padrão: chapas, vigas, parafusos; chumbador desmarcado por padrão; solda ignorada.
+            True(Show(r) == "1:Chapa 4.75 x3 | 2:Chapa 12.5 x1 | 3:Viga 2U (composto) x1 | 4:Viga U100 x4 | 5:Viga W200x15 x1 | 6:Parafuso Ø12 x 35 10.9 x2 | 7:Parafuso Ø16 x 50 10.9 x1", Show(r));
+            True(r.Excluded.Single().Handle == "A1" && r.Excluded.Single().Reason == "categoria desmarcada", "chumbador fora");
+            True(r.Assignments("")["P4"].mark == "1" && r.Assignments("")["B5"].mark == "4", "dobrada/curva agrupadas com as retas");
+
+            o.GroupBent = false; o.Prefix = "M-"; o.Start = 10; o.Enabled.Add(ItemCategory.Anchor);
+            o.Order = new() { ItemCategory.Beam, ItemCategory.Plate, ItemCategory.Bolt, ItemCategory.Anchor };
+            ItemResult r2 = ItemNumbering.Compute(x, o);
+            True(r2.Rows[0].Mark == "M-10" && r2.Rows[0].Category == ItemCategory.Beam, "prefixo, início e ordem das categorias");
+            True(r2.Rows.Any(w => w.Type == "U100 (curva)" && w.Quantity == 1) && r2.Rows.Any(w => w.Type == "4.75 (dobrada)"), "separa curvas e dobradas");
+            True(r2.Rows.Last().Category == ItemCategory.Anchor && r2.Rows.Last().Type == "Ø20 x 400 10.9", "chumbador por último");
+            var asg = r2.Assignments("M-");
+            True(asg["B1"] == ("M-11", "M-", "11") || asg["B1"].prefix == "M-", "atribuição com prefixo e número separados");
+
+            o.SortBy = ItemSortBy.Quantity; o.Descending = true; o.GroupBent = true;
+            ItemResult r3 = ItemNumbering.Compute(x, o);
+            True(r3.Rows[0].Type == "U100" && r3.Rows[0].Quantity == 4, "vigas por quantidade, decrescente");
+
+            o.Filters.Add(new ItemFilter(FilterField.UserAttribute1, FilterOp.NotContains, "sair"));
+            o.Filters.Add(new ItemFilter(FilterField.Type, FilterOp.NotEquals, "w200x15"));
+            ItemResult r4 = ItemNumbering.Compute(x, o);
+            True(r4.Excluded.Any(e => e.Handle == "B3" && e.Reason.StartsWith("filtro: Atributo do usuário 1 não contém")), "filtro por atributo");
+            True(r4.Excluded.Any(e => e.Handle == "B4") && !r4.Rows.Any(w => w.Type == "W200x15"), "filtro por tipo (sem diferenciar maiúsculas)");
+            True(r4.Rows.First(w => w.Type == "U100").Quantity == 3, "B3 fora, campo dele não seria alterado");
+            True(NaturalComparer.Instance.Compare("4.75", "12.5") < 0 && NaturalComparer.Instance.Compare("U100", "U80") > 0 && NaturalComparer.Instance.Compare("L50x5", "L100x10") < 0, "ordem natural");
+        });
+
+        Run("janela de numeração: prévia, prefixo, ordem e opções lembradas", () =>
+        {
+            const string beam = """{"handle":"B1","clrType":"A.StraightBeam","inheritance":["StraightBeam","Beam","AtomicElement","FilerObject"],"properties":[{"technicalName":"ProfSectionName","declaringType":"Beam","status":"Read","rawValue":"U100"}]}""";
+            const string plate = """{"handle":"P1","clrType":"A.Plate","inheritance":["Plate","PlateBase","AtomicElement","FilerObject"],"properties":[{"technicalName":"Thickness","declaringType":"PlateBase","status":"Read","rawValue":6.3}]}""";
+            Extraction x = DiagnosticImporter.Import(Run_, new[] { beam, plate });
+            var o = new ItemOptions();
+            using var dlg = new NumberingDialog(x, o);
+            True(dlg.Result.Rows.Count == 2 && dlg.Result.Rows[0].Category == ItemCategory.Plate && dlg.Result.Rows[0].Type == "6.3", "prévia inicial: chapa primeiro");
+            var prefix = (System.Windows.Forms.TextBox)typeof(NumberingDialog).GetField("_prefix", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(dlg)!;
+            prefix.Text = "IT-";
+            True(dlg.Result.Rows[0].Mark == "IT-1" && dlg.Result.Rows[1].Mark == "IT-2", "prefixo atualiza a prévia: " + string.Join(",", dlg.Result.Rows.Select(r => r.Mark)));
+            var cats = (System.Windows.Forms.DataGridView)typeof(NumberingDialog).GetField("_cats", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(dlg)!;
+            typeof(NumberingDialog).GetMethod("MoveCategory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(dlg, new object[] { 1, -1 });
+            True(o.Order[0] == ItemCategory.Beam && dlg.Result.Rows[0].Type == "U100", "↑ coloca vigas antes das chapas");
+            cats.Rows[0].Cells[0].Value = false; dlg.Collect();
+            True(dlg.Result.Rows.Single().Category == ItemCategory.Plate && dlg.Result.Excluded.Single().Reason == "categoria desmarcada", "categoria desmarcada sai da numeração");
+            string path = Path.Combine(Temp, "numbering.json");
+            o.Filters.Add(new ItemFilter(FilterField.Material, FilterOp.IsEmpty, ""));
+            NumberingSettings.Save(o, path);
+            ItemOptions r = NumberingSettings.Load(path);
+            True(r.Prefix == "IT-" && r.Order[0] == ItemCategory.Beam && !r.Enabled.Contains(ItemCategory.Beam) && r.Filters.Single().Op == FilterOp.IsEmpty, "opções lembradas");
         });
 
         // ------------------------------------------------------------------ ponte local
