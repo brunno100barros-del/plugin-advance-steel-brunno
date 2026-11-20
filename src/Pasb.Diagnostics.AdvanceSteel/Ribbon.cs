@@ -56,6 +56,11 @@ internal static class PasbRibbon
             "Exporta o modelo para IFC4 georreferenciado, com todas as propriedades do Advance Steel."),
             Large("Importar\nIFC", "PASB_IMPORTAR_IFC", "IMP", false,
             "Importa qualquer IFC como sólidos (plotam) ou malhas (leves), com níveis, cores por nível, layers e blocos.")));
+        tab.Panels.Add(Panel("Macros",
+            Large("Contraventa-\nmento em X", "PASB_CONTRAVENTAMENTO", "CV", false,
+                "Contraventamento em X com barra redonda e esticador: clique os 2 cantos opostos (plano XY, cota Z do 1º ponto) e ajuste todos os parâmetros na janela."),
+            Large("Editar\ncontravent.", "PASB_EDITAR_CONTRAVENTAMENTO", "ED", false,
+                "Selecione uma peça de um contraventamento PASB para reabrir os parâmetros e regerar.")));
         tab.Panels.Add(Panel("Numeração", Large("Numerar\nitens", "PASB_NUMERAR_ITENS", "Nº", false,
             "Numeração itemizada, como no Revit: peças iguais ganham o mesmo item (vigas por perfil, chapas por espessura, parafusos por diâmetro x comprimento), com prévia e filtros antes de gravar.")));
         tab.Panels.Add(Panel("Listas", Large("Lista de\nmaterial", "PASB_LISTA_MATERIAL", "LM", false,

@@ -37,6 +37,7 @@ Exportar um modelo de estrutura metálica para IFC costuma significar escolher e
 | 🌎 | **Georreferenciamento real** | `IfcProjectedCRS` + `IfcMapConversion` a partir de um ponto de controle e do ângulo com o Norte |
 | 🤖 | **Conector IA** | Um assistente de IA (Claude Code) lê o modelo e exporta IFC pelo próprio plugin, só por leitura — [docs/AI-CONNECTOR.md](docs/AI-CONNECTOR.md) |
 | 👁️ | **Identidade Coordix** | Janelas e ícones da aba com a identidade visual Coordix · BIMOFFICE (paleta cobre/ink, IBM Plex quando instalada, símbolo do olho) |
+| 🧩 | **Macros** | Contraventamento em X com barra redonda e esticador, tudo editável e regerável ([docs/BRACING.md](docs/BRACING.md)) |
 | 🔢 | **Numeração itemizada** | Peças iguais recebem a mesma marca (vigas por perfil, chapas por espessura, parafusos por Ø × comprimento), com prévia e filtros ([docs/NUMBERING.md](docs/NUMBERING.md)) |
 | 📥 | **Importação de IFC** | Qualquer IFC como sólidos ou malhas, separado por nível com cor por nível ([docs/IFC-IMPORT.md](docs/IFC-IMPORT.md)) |
 | 📦 | **Exportador IFC4 próprio** | Não depende do exportador nativo; cada exportação gera um relatório de cobertura e limitações |
@@ -93,6 +94,7 @@ Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADM
 
 | Documento | Conteúdo |
 |---|---|
+| [docs/BRACING.md](docs/BRACING.md) | Macro de contraventamento em X: montagem, parâmetros, edição |
 | [docs/NUMBERING.md](docs/NUMBERING.md) | Numeração itemizada: regras, campos, filtros, segurança |
 | [docs/IFC-IMPORT.md](docs/IFC-IMPORT.md) | Importação de IFC: níveis, cores, layers, blocos, xBIM |
 | [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) | Licenças de terceiros (xBIM, OpenCascade) |

@@ -58,6 +58,7 @@ A importação de IFC usa as bibliotecas livres xBIM e OpenCascade, sem modifica
 |---|---|
 | **Exportar IFC** | IFC4 georreferenciado (SIRGAS 2000/UTM ou X,Y,Z da obra), com todas as propriedades |
 | **Importar IFC** | Qualquer IFC como sólidos ou malhas, separado por nível com cor por nível ([docs/IFC-IMPORT.md](docs/IFC-IMPORT.md)) |
+| **Contraventamento em X / Editar** | Macro de contraventamento com barra redonda e esticador ([docs/BRACING.md](docs/BRACING.md)) |
 | **Numerar itens** | Numeração itemizada: peças iguais recebem a mesma marca, com prévia, filtros e confirmação ([docs/NUMBERING.md](docs/NUMBERING.md)) |
 | **Lista de material** | Insere no desenho as tabelas escolhidas: detalhada, resumo de perfis, parafusos, chumbadores e chapas |
 | **Diagnóstico seleção / modelo** | Leitura técnica dos objetos, somente leitura |

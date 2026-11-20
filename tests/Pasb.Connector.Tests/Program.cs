@@ -285,6 +285,62 @@ internal static class Program
             True(r.Prefix == "IT-" && r.Order[0] == ItemCategory.Beam && !r.Enabled.Contains(ItemCategory.Beam) && r.Filters.Single().Op == FilterOp.IsEmpty, "opções lembradas");
         });
 
+        Run("contraventamento: reproduz as medidas do exemplo do SteelX (diagonal 1)", () =>
+        {
+            var a = new V3(330.0128, 95.7679, 0); var b = new V3(1389.5217, 1353.1876, 0);
+            double L = (b - a).Length;
+            var p = new BracingParams { Diagonals = BracingDiagonals.Diagonal1, TurnbuckleMode = TurnbucklePositionMode.FromCorner1, TurnbucklePosition = 1079.8 };
+            BracingResult r = BracingGeometry.Build(a, b, p);
+            True(r.Errors.Count == 0, string.Join("; ", r.Errors));
+            V3 u = (b - a).Unit;
+            double S(V3 pt) => V3.Dot(pt - a, u);
+            bool Near(double x, double y, double tol = 0.15) => Math.Abs(x - y) < tol;
+            var rods = r.Parts.Where(x => x.Kind == BracingPartKind.Rod).ToList();
+            var thr = r.Parts.Where(x => x.Kind == BracingPartKind.ThreadedRod).ToList();
+            True(rods.Count == 2 && thr.Count == 2, "2 barras lisas e 2 roscadas");
+            True(Near(Math.Min(S(rods[0].Start), S(rods[0].End)), 114.5) && Near(Math.Max(S(rods[0].Start), S(rods[0].End)), 929.8), "barra 1: 114,5 a 929,8");
+            True(Near(Math.Min(S(thr[0].Start), S(thr[0].End)), 929.8) && Near(Math.Max(S(thr[0].Start), S(thr[0].End)), 1054.8), "rosca 1: 929,8 a 1054,8");
+            True(Near(Math.Min(S(thr[1].Start), S(thr[1].End)), 1104.8) && Near(Math.Max(S(thr[1].Start), S(thr[1].End)), 1229.8), "rosca 2: 1104,8 a 1229,8");
+            True(Near(Math.Min(S(rods[1].Start), S(rods[1].End)), 1229.8) && Near(Math.Max(S(rods[1].Start), S(rods[1].End)), L - 114.5), "barra 2 até 114,5 do canto 2");
+            var cleat = r.Parts.Single(x => x.Kind == BracingPartKind.Cleat);
+            True(Near(S(cleat.Start), 1009.8) && Near(S(cleat.End), 1149.8), "cantoneira 1009,8 a 1149,8");
+            var bolts = r.Parts.Where(x => x.Kind == BracingPartKind.Bolt).Select(x => S(x.Origin)).OrderBy(x => x).ToList();
+            True(bolts.Count == 2 && Near(bolts[0], 84.5) && Near(bolts[1], L - 84.5), "parafusos a 84,5 dos cantos");
+            var welds = r.Parts.Where(x => x.Kind == BracingPartKind.Weld && x.Size == 5).Select(x => S(x.Origin)).OrderBy(x => x).ToList();
+            True(Near(welds[0], 164.5) && Near(welds[1], L - 164.5), "solda barra-gusset a 164,5");
+            var g = r.Parts.First(x => x.Kind == BracingPartKind.Gusset);
+            True(Near(S(g.Polygon[0]), 54.5) && Near(S(g.Polygon[1]), 214.5) && Near(g.Polygon[0].Z, 6.35) && g.Thickness == 6.35, "gusset 54,5 a 214,5, topo em 6,35 (sobre a chapa de base)");
+            True(Near(rods[0].Start.Z, 6.35 + 6.35), "eixo da barra apoiado no gusset");
+            True(r.Parts.Count(x => x.Kind == BracingPartKind.Nut) == 4 && r.Parts.Count(x => x.Kind == BracingPartKind.Washer) == 4, "porca e arruela dos dois lados de cada chapa de topo");
+            True(r.Parts.Count(x => x.Kind == BracingPartKind.SpliceBar) == 4 && r.Parts.Count(x => x.Kind == BracingPartKind.EndPlate) == 2, "talas e chapas de topo");
+            // Toda solda e parafuso ligam peças existentes.
+            True(r.Parts.Where(x => x.Kind is BracingPartKind.Weld or BracingPartKind.Bolt).All(x => x.Connects.Length >= 2 && x.Connects.All(i => i >= 0 && i < r.Parts.Count && r.Parts[i].Kind is not (BracingPartKind.Weld or BracingPartKind.Bolt))), "conexões válidas");
+        });
+        Run("contraventamento: X, opções e validação", () =>
+        {
+            var a = new V3(0, 0, 3000); var b = new V3(6000, 4000, 7777);
+            var p = new BracingParams();
+            BracingResult r = BracingGeometry.Build(a, b, p);
+            True(r.Errors.Count == 0 && r.DiagonalLines.Count == 2, "X com 2 diagonais (padrão 65%): " + string.Join("; ", r.Errors));
+            True(BracingGeometry.Build(a, b, new BracingParams { TurnbucklePosition = 50 }).Errors.Any(e => e.Contains("se chocam")), "X a 50%: esticadores no cruzamento são recusados");
+            True(r.Parts.Where(x => x.Kind is BracingPartKind.Rod).All(x => Math.Abs(x.Start.Z - (3000 + 6.35 + 6.35)) < 1e-6), "tudo no Z do primeiro ponto (chapa de base abaixo, gusset em cima)");
+            var (q1, q2) = r.DiagonalLines[1];
+            True(q1.X == 0 && q1.Y == 4000 && q2.X == 6000 && q2.Y == 0, "diagonal 2 entre os outros cantos");
+            var cl = r.Parts.Where(x => x.Kind == BracingPartKind.Cleat).ToList();
+            True(Math.Abs(((cl[0].Start + cl[0].End) * 0.5 - (a with { Z = 0 }) - new V3(0, 0, cl[0].Start.Z)).Length - 7211.10 * 0.65) < 0.1, "esticador a 65% da diagonal");
+            p.BasePlate = false; p.Bolt = false; p.NutsAndWashers = false; p.SpliceBars = false; p.Diagonals = BracingDiagonals.Diagonal2;
+            BracingResult r2 = BracingGeometry.Build(a, b, p);
+            True(r2.Errors.Count == 0 && !r2.Parts.Any(x => x.Kind is BracingPartKind.BasePlate or BracingPartKind.Bolt or BracingPartKind.Nut or BracingPartKind.Washer or BracingPartKind.SpliceBar), "opções desligadas");
+            True(r2.Parts.Where(x => x.Kind == BracingPartKind.Gusset).All(x => Math.Abs(x.Polygon[0].Z - (3000 + 6.35)) < 1e-6), "sem chapa de base, gusset apoiado no Z do ponto");
+            p.Bolt = true;
+            True(BracingGeometry.Build(a, b, p).Errors.Any(e => e.Contains("chapa de base")), "parafuso sem chapa de base é recusado");
+            p.Bolt = false; p.TurnbuckleMode = TurnbucklePositionMode.FromCorner1; p.TurnbucklePosition = 100;
+            True(BracingGeometry.Build(a, b, p).Errors.Any(e => e.Contains("gusset do canto 1")), "esticador em cima do gusset é recusado");
+            True(BracingGeometry.Build(a, new V3(0, 5000, 0), new BracingParams()).Errors.Any(e => e.Contains("retângulo")), "pontos alinhados são recusados");
+            string json = p.ToJson();
+            True(BracingParams.FromJson(json).TurnbucklePosition == 100 && BracingParams.FromJson(json).Diagonals == BracingDiagonals.Diagonal2, "parâmetros ida e volta em JSON");
+        });
+
         // ------------------------------------------------------------------ ponte local
         await RunAsync("ponte: ida e volta, erro do manipulador e arquivo de descoberta", async () =>
         {
