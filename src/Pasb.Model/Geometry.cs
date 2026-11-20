@@ -78,9 +78,21 @@ public static class GeometryExtractor
         {
             if (props["Type"] is JsonObject t && t["name"] is JsonValue tn && tn.TryGetValue(out string? shape) && shape is not null)
                 g.Descriptors["sectionShape"] = shape;
-            foreach (string k in new[] { "H", "B", "Tw", "Tf", "R1", "R2" })
+            foreach (string k in new[] { "H", "B", "Tw", "Tf", "R1", "R2", "E" })
                 if (TryNum(props[k], out double d)) g.Dimensions["section." + k] = d;
             g.SourceKeys.Add(pt.Key);
+        }
+        // Cortes de serra (graus) e espelhamento da seção: usados para os chanfros das pontas (Teste 10).
+        if (p.TryGetValue("Beam.GetSawInformation", out NeutralProperty? saw) && saw.RawValue is JsonObject sj)
+        {
+            foreach (string k in new[] { "flangeAngleAtStart", "flangeAngleAtEnd", "webAngleAtStart", "webAngleAtEnd" })
+                if (TryNum(sj[k], out double ang)) g.Dimensions["saw." + k] = ang;
+            g.SourceKeys.Add(saw.Key);
+        }
+        if (p.TryGetValue("Beam.IsCrossSectionMirrored", out NeutralProperty? mir) && mir.RawValue is JsonValue mv && mv.TryGetValue(out bool mirrored))
+        {
+            g.Descriptors["mirrored"] = mirrored ? "true" : "false";
+            g.SourceKeys.Add(mir.Key);
         }
         if (!g.Dimensions.ContainsKey("section.H"))
             g.Limitations.Add("Seção sem dimensões (perfil composto ou tipo não serializado): corpo sólido indisponível.");
