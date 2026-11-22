@@ -65,6 +65,11 @@ internal static class PasbRibbon
                 "Macro (ligação nativa) de correntes de terça: agulhas entre as almas, barras rígidas com cantoneiras parafusadas e tirantes diagonais. Selecione as terças de uma água e depois os pórticos A e B (ENTER usa as pontas das terças). Para editar: duplo clique na caixa cinza."),
             Large("Editar\ncontravent.", "PASB_EDITAR_CONTRAVENTAMENTO", "ED", false,
                 "Só para contraventamentos da versão simples (antes da macro nativa). A macro nativa edita com duplo clique na caixa cinza.")));
+        tab.Panels.Add(Panel("Render",
+            Large("Renderizar", "PASB_RENDERIZAR", "RND", false,
+                "Abre uma janela com a estrutura renderizada na vista atual (realista ou render completo com materiais e luzes). Nada é salvo: na janela há Salvar imagem, Copiar e Inserir na prancha."),
+            Large("Vista realista\nna prancha", "PASB_VISTA_REALISTA", "VR", false,
+                "Num layout (prancha): cria uma janela de vista com a vista atual do modelo em estilo Realista, que sai realista na impressão e no PDF.")));
         tab.Panels.Add(Panel("Numeração", Large("Numerar\nitens", "PASB_NUMERAR_ITENS", "Nº", false,
             "Numeração itemizada, como no Revit: peças iguais ganham o mesmo item (vigas por perfil, chapas por espessura, parafusos por diâmetro x comprimento), com prévia e filtros antes de gravar.")));
         tab.Panels.Add(Panel("Listas", Large("Lista de\nmaterial", "PASB_LISTA_MATERIAL", "LM", false,
