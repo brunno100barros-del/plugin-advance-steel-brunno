@@ -19,7 +19,21 @@ public static class BracingSettings
 
     public static BracingParams Load(string? path = null)
     {
-        try { string p = path ?? DefaultPath; return File.Exists(p) ? BracingParams.FromJson(File.ReadAllText(p)) : new BracingParams(); }
+        try
+        {
+            string p = path ?? DefaultPath;
+            if (!File.Exists(p)) return new BracingParams();
+            string json = File.ReadAllText(p);
+            BracingParams b = BracingParams.FromJson(json);
+            if (!json.Contains("\"SchemaVersion\"", StringComparison.Ordinal))
+            {
+                // Configuração da 0.10.0: adotar a nova posição padrão do esticador (300 mm do ponto clicado até a ponta).
+                var d = new BracingParams();
+                b.TurnbuckleMode = d.TurnbuckleMode; b.TurnbucklePosition = d.TurnbucklePosition;
+                b.TurnbuckleReference = d.TurnbuckleReference; b.TurnbuckleFromCorner2 = d.TurnbuckleFromCorner2;
+            }
+            return b;
+        }
         catch (Exception) { return new BracingParams(); }
     }
 
@@ -47,7 +61,7 @@ public sealed class BracingDialog : Form
     private readonly List<Action> _readers = new();
     private readonly Panel _preview = new() { Dock = DockStyle.Fill, BackColor = Brand.BgDark };
     private readonly Label _status = new() { AutoSize = false, Dock = DockStyle.Fill, ForeColor = Brand.Muted, Font = Brand.Sans(8.5f) };
-    private readonly Button _ok, _cancel = Brand.Btn("Cancelar"), _defaults = Brand.Btn("Valores do exemplo");
+    private readonly Button _ok, _cancel = Brand.Btn("Cancelar"), _defaults = Brand.Btn("Valores padrão");
     private bool _loading = true;
 
     public BracingDialog(V3 p1, V3 p2, BracingParams p, string version = "", bool editing = false)
@@ -105,8 +119,10 @@ public sealed class BracingDialog : Form
         Num(c1, "Distância ao início do gusset", () => p.BoltFromGussetStart, v => p.BoltFromGussetStart = v);
 
         Section(c2, "Esticador");
-        Choice(c2, "Posição medida em", new[] { "% do comprimento da diagonal", "mm a partir do canto 1" }, () => (int)p.TurnbuckleMode, v => p.TurnbuckleMode = (TurnbucklePositionMode)v);
-        Num(c2, "Posição do centro", () => p.TurnbucklePosition, v => p.TurnbucklePosition = v);
+        Choice(c2, "Posição medida em", new[] { "% da diagonal (até o centro)", "mm a partir do ponto clicado" }, () => (int)p.TurnbuckleMode, v => p.TurnbuckleMode = (TurnbucklePositionMode)v);
+        Num(c2, "Distância (mm ou %)", () => p.TurnbucklePosition, v => p.TurnbucklePosition = v);
+        Choice(c2, "Medida até (modo mm)", new[] { "a ponta mais próxima do esticador", "o centro do esticador" }, () => (int)p.TurnbuckleReference, v => p.TurnbuckleReference = (TurnbuckleReference)v);
+        Choice(c2, "A partir de (modo mm)", new[] { "Ponto 1 (1º clique)", "Ponto 2 (2º clique)" }, () => p.TurnbuckleFromCorner2 ? 1 : 0, v => p.TurnbuckleFromCorner2 = v == 1);
         Text_(c2, "Perfil da cantoneira", () => p.CleatProfile, v => p.CleatProfile = v);
         Num(c2, "Comprimento da cantoneira", () => p.CleatLength, v => p.CleatLength = v);
         Text_(c2, "Material", () => p.CleatMaterial, v => p.CleatMaterial = v);
@@ -152,7 +168,7 @@ public sealed class BracingDialog : Form
         _cancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
         _defaults.Click += (_, _) =>
         {
-            if (MessageBox.Show(this, "Voltar todos os campos aos valores do exemplo analisado?", "PASB", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (MessageBox.Show(this, "Voltar todos os campos aos valores padrão?", "PASB", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             string keep = Params.ToJson();
             var d = new BracingParams();
             foreach (var prop in typeof(BracingParams).GetProperties()) prop.SetValue(Params, prop.GetValue(d));

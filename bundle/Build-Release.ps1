@@ -33,7 +33,7 @@ foreach ($ps in Get-ChildItem $files -Filter *.ps1) {
 Copy-Item (Join-Path $files '*.cmd') $stage
 $readme = [IO.File]::ReadAllText((Join-Path $files 'LEIA-ME.txt')).Replace('{{VERSION}}', $version)
 [IO.File]::WriteAllText((Join-Path $stage 'LEIA-ME.txt'), $readme, (New-Object System.Text.UTF8Encoding($false)))
-Copy-Item (Join-Path $root 'Registrar-Conector-IA.cmd'), (Join-Path $root 'Remover-Conector-IA.cmd') $stage
+Copy-Item (Join-Path $root 'Registrar-Conector-IA.cmd'), (Join-Path $root 'Remover-Conector-IA.cmd'), (Join-Path $root 'Registrar-Macros-PASB.cmd'), (Join-Path $root 'Remover-Macros-PASB.cmd') $stage
 
 $outDir = Join-Path $root 'release'
 New-Item -ItemType Directory -Force $outDir | Out-Null

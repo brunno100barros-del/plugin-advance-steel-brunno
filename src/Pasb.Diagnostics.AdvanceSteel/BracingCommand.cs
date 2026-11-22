@@ -50,6 +50,13 @@ public sealed class BracingCommand
         try
         {
             if (!CheckUnits(doc, ed)) return;
+            // Macro nativa registrada (Registrar-Macros-PASB.cmd): ligação de verdade, com caixa cinza e duplo clique.
+            if (NativeJointInstalled())
+            {
+                JointsMenuCommand.StartJoint(doc, "PasbContraventamento");
+                return;
+            }
+            ed.WriteMessage("\nPASB: a macro nativa não está registrada (rode Registrar-Macros-PASB.cmd com o Advance Steel fechado). Usando a versão simples, sem caixa de ligação.\n");
             PromptPointResult r1 = ed.GetPoint(new PromptPointOptions("\nPASB: ponto 1 (canto do contraventamento): "));
             if (r1.Status != PromptStatus.OK) return;
             PromptPointResult r2 = ed.GetCorner(new PromptCornerOptions("\nPASB: ponto 2 (canto oposto): ", r1.Value));
@@ -77,7 +84,7 @@ public sealed class BracingCommand
         }
     }
 
-    [CommandMethod("PASB", "PASB_EDITAR_CONTRAVENTAMENTO", CommandFlags.Modal)]
+    [CommandMethod("PASB", "PASB_EDITAR_CONTRAVENTAMENTO", CommandFlags.Modal | CommandFlags.UsePickSet | CommandFlags.Redraw)]
     public void Edit()
     {
         AcDoc? doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -86,10 +93,27 @@ public sealed class BracingCommand
         try
         {
             if (!CheckUnits(doc, ed)) return;
-            PromptEntityResult pick = ed.GetEntity(new PromptEntityOptions("\nPASB: selecione uma peça do contraventamento: "));
-            if (pick.Status != PromptStatus.OK) return;
-            string? id = ReadTag(doc, pick.ObjectId);
-            if (id == null || LoadRecord(doc, id) is not { } rec) { ed.WriteMessage("\nPASB: essa peça não pertence a um contraventamento gerado pelo PASB.\n"); return; }
+            // 1) peça já selecionada (clique antes do comando ou menu do botão direito); 2) senão, pedir uma peça.
+            string? id = null;
+            PromptSelectionResult implied = ed.SelectImplied();
+            if (implied.Status == PromptStatus.OK)
+                foreach (ObjectId oid in implied.Value.GetObjectIds()) { id = FindBracingId(doc, oid); if (id != null) break; }
+            if (id == null)
+            {
+                var opt = new PromptEntityOptions("\nPASB: selecione uma peça do contraventamento: ");
+                PromptEntityResult pick = ed.GetEntity(opt);
+                if (pick.Status != PromptStatus.OK) return;
+                id = FindBracingId(doc, pick.ObjectId);
+            }
+            ed.SetImpliedSelection(Array.Empty<ObjectId>());
+            if (id == null || LoadRecord(doc, id) is not { } rec)
+            {
+                int n = CountRecords(doc);
+                ed.WriteMessage(n == 0
+                    ? "\nPASB: este desenho não tem contraventamento gerado pelo PASB (gere com PASB > Contraventamento em X).\n"
+                    : $"\nPASB: essa peça não pertence a nenhum dos {n} contraventamento(s) PASB deste desenho. Clique numa barra, chapa ou no esticador.\n");
+                return;
+            }
 
             BracingParams prm = rec.prm;
             BracingResult res;
@@ -315,10 +339,80 @@ public sealed class BracingCommand
 
     private static string? ReadTag(AcDoc doc, ObjectId oid)
     {
-        using AcTransaction tr = doc.Database.TransactionManager.StartTransaction();
-        var ent = (Entity)tr.GetObject(oid, OpenMode.ForRead);
-        using ResultBuffer? rb = ent.GetXDataForApplication(RegApp);
-        return rb?.AsArray().Skip(1).Select(v => v.Value as string).FirstOrDefault(s => !string.IsNullOrEmpty(s));
+        try
+        {
+            using AcTransaction tr = doc.Database.TransactionManager.StartTransaction();
+            var ent = (Entity)tr.GetObject(oid, OpenMode.ForRead);
+            using ResultBuffer? rb = ent.GetXDataForApplication(RegApp);
+            return rb?.AsArray().Skip(1).Select(v => v.Value as string).FirstOrDefault(s => !string.IsNullOrEmpty(s));
+        }
+        catch (System.Exception) { return null; }
+    }
+
+    /// <summary>
+    /// Contraventamento ao qual a peça pertence: pela marca XData e, se o Advance Steel não a guardou, procurando o
+    /// handle da peça na lista de peças de cada contraventamento salvo no desenho.
+    /// </summary>
+    private static string? FindBracingId(AcDoc doc, ObjectId oid)
+    {
+        string? tag = ReadTag(doc, oid);
+        if (tag != null && LoadRecord(doc, tag) != null) return tag;
+        long h = oid.Handle.Value;
+        foreach (var (id, handles) in AllRecords(doc))
+            if (handles.Any(s => ParseHandle(s) == h)) return id;
+        return null;
+    }
+
+    private static int CountRecords(AcDoc doc) => AllRecords(doc).Count;
+
+    private static List<(string id, List<string> handles)> AllRecords(AcDoc doc)
+    {
+        var list = new List<(string, List<string>)>();
+        try
+        {
+            using AcTransaction tr = doc.Database.TransactionManager.StartTransaction();
+            var nod = (DBDictionary)tr.GetObject(doc.Database.NamedObjectsDictionaryId, OpenMode.ForRead);
+            if (!nod.Contains(DictName)) return list;
+            var dict = (DBDictionary)tr.GetObject(nod.GetAt(DictName), OpenMode.ForRead);
+            foreach (DBDictionaryEntry e in dict)
+            {
+                if (tr.GetObject(e.Value, OpenMode.ForRead) is not Xrecord xr || xr.Data == null) continue;
+                var handles = new List<string>(); bool inHandles = false;
+                foreach (TypedValue t in xr.Data.AsArray())
+                {
+                    if (t.Value is not string s) continue;
+                    if (s == "##HANDLES##") { inHandles = true; continue; }
+                    if (inHandles) handles.Add(s);
+                }
+                list.Add((e.Key, handles));
+            }
+        }
+        catch (System.Exception) { }
+        return list;
+    }
+
+    private static long ParseHandle(string s)
+    {
+        try { return Convert.ToInt64(s.Trim(), 16); } catch (System.Exception) { return -1; }
+    }
+
+    // ------------------------------------------------------------------ menu do botão direito
+
+    private static Autodesk.AutoCAD.Windows.ContextMenuExtension? _menu;
+
+    /// <summary>Acrescenta "PASB: Editar contraventamento" ao menu do botão direito de qualquer objeto selecionado. Nunca lança.</summary>
+    public static void RegisterContextMenu()
+    {
+        try
+        {
+            if (_menu != null) return;
+            _menu = new Autodesk.AutoCAD.Windows.ContextMenuExtension { Title = "PASB" };
+            var item = new Autodesk.AutoCAD.Windows.MenuItem("PASB: Editar contraventamento");
+            item.Click += (_, _) => AcApp.DocumentManager.MdiActiveDocument?.SendStringToExecute("_PASB_EDITAR_CONTRAVENTAMENTO ", true, false, false);
+            _menu.MenuItems.Add(item);
+            Autodesk.AutoCAD.ApplicationServices.Application.AddObjectContextMenuExtension(RXObject.GetClass(typeof(Entity)), _menu);
+        }
+        catch (System.Exception ex) { StartupLog.Write("Menu do contraventamento falhou: " + ex); }
     }
 
     private static void SaveRecord(AcDoc doc, string id, V3 p1, V3 p2, BracingParams prm, List<string> handles)
@@ -392,6 +486,17 @@ public sealed class BracingCommand
     }
 
     // ------------------------------------------------------------------ utilitários
+
+    /// <summary>PasbJoints.dll está na pasta do Advance Steel (onde ele carrega as ligações registradas).</summary>
+    private static bool NativeJointInstalled()
+    {
+        try
+        {
+            string advs = System.IO.Path.GetDirectoryName(typeof(Autodesk.AdvanceSteel.CADAccess.FilerObject).Assembly.Location) ?? "";
+            return System.IO.File.Exists(System.IO.Path.Combine(advs, "PasbJoints.dll"));
+        }
+        catch (System.Exception) { return false; }
+    }
 
     private static bool CheckUnits(AcDoc doc, Editor ed)
     {

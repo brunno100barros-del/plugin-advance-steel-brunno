@@ -56,11 +56,15 @@ internal static class PasbRibbon
             "Exporta o modelo para IFC4 georreferenciado, com todas as propriedades do Advance Steel."),
             Large("Importar\nIFC", "PASB_IMPORTAR_IFC", "IMP", false,
             "Importa qualquer IFC como sólidos (plotam) ou malhas (leves), com níveis, cores por nível, layers e blocos.")));
-        tab.Panels.Add(Panel("Macros",
+        tab.Panels.Add(Panel("Ligações",
+            Large("Menu de\nligações", "PASB_LIGACOES", "LIG", false,
+                "Lista as ligações do PASB (contraventamento em X, sistema antidobra...) com uma descrição de cada uma. Escolha e clique Criar."),
             Large("Contraventa-\nmento em X", "PASB_CONTRAVENTAMENTO", "CV", false,
-                "Contraventamento em X com barra redonda e esticador: clique os 2 cantos opostos (plano XY, cota Z do 1º ponto) e ajuste todos os parâmetros na janela."),
+                "Macro (ligação nativa) de contraventamento em X com barra redonda e esticador: clique os 2 cantos opostos (plano XY da UCS) e, se quiser, as vigas de apoio. Para editar: duplo clique na caixa cinza da ligação."),
+            Large("Sistema\nantidobra", "PASB_ANTIDOBRA", "AD", false,
+                "Macro (ligação nativa) de correntes de terça: agulhas entre as almas, barras rígidas com cantoneiras parafusadas e tirantes diagonais. Selecione as terças de uma água e depois os pórticos A e B (ENTER usa as pontas das terças). Para editar: duplo clique na caixa cinza."),
             Large("Editar\ncontravent.", "PASB_EDITAR_CONTRAVENTAMENTO", "ED", false,
-                "Selecione uma peça de um contraventamento PASB para reabrir os parâmetros e regerar.")));
+                "Só para contraventamentos da versão simples (antes da macro nativa). A macro nativa edita com duplo clique na caixa cinza.")));
         tab.Panels.Add(Panel("Numeração", Large("Numerar\nitens", "PASB_NUMERAR_ITENS", "Nº", false,
             "Numeração itemizada, como no Revit: peças iguais ganham o mesmo item (vigas por perfil, chapas por espessura, parafusos por diâmetro x comprimento), com prévia e filtros antes de gravar.")));
         tab.Panels.Add(Panel("Listas", Large("Lista de\nmaterial", "PASB_LISTA_MATERIAL", "LM", false,
@@ -108,7 +112,8 @@ internal static class PasbRibbon
         LargeImage = Icon(glyph, eye, 32),
         Image = Icon(glyph, eye, 16),
         ToolTip = tooltip,
-        CommandParameter = "\x03\x03" + command + " ",   // cancela comando em andamento e executa
+        // Cancela o comando em andamento e executa. O "Editar" não cancela, para aproveitar a peça já selecionada.
+        CommandParameter = (command == "PASB_EDITAR_CONTRAVENTAMENTO" ? "" : "\x03\x03") + command + " ",
         CommandHandler = new SendCommand(),
     };
 

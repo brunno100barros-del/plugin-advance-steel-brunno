@@ -29,6 +29,7 @@ public sealed class Plugin : IExtensionApplication
         AcAppUi.Idle -= OnFirstIdle;
         StartupLog.Write("Primeiro ocioso: criando a aba PASB");
         PasbRibbon.Initialize();
+        BracingCommand.RegisterContextMenu();
         StartupLog.Write("Aba PASB: concluído");
     }
 

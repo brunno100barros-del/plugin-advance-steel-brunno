@@ -45,5 +45,13 @@ Get-ChildItem (Join-Path $bundle 'Contents\IfcImport') -Recurse -Filter *.xml | 
 $x86 = Join-Path $bundle 'Contents\IfcImport\win-x86'; if (Test-Path $x86) { Remove-Item $x86 -Recurse -Force }
 Copy-Item (Join-Path $root 'THIRD-PARTY-NOTICES.md') (Join-Path $bundle 'Contents\IfcImport')
 
+# Ligações nativas (PasbJoints.dll): ficam no bundle e o Registrar-Macros-PASB.cmd as copia para a pasta ADVS.
+$jointsProject = Join-Path $root 'src\Pasb.Joints\Pasb.Joints.csproj'
+& dotnet build $jointsProject -c $Configuration -nologo
+if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar as ligações nativas (código $LASTEXITCODE)." }
+New-Item -ItemType Directory -Force (Join-Path $bundle 'Contents\Joints') | Out-Null
+Copy-Item (Join-Path $root "src\Pasb.Joints\bin\$Configuration\PasbJoints.dll") (Join-Path $bundle 'Contents\Joints')
+Copy-Item (Join-Path $PSScriptRoot 'Register-NativeJoints.ps1') (Join-Path $bundle 'Contents\Joints')
+
 Write-Host "Bundle montado em: $bundle"
 Get-ChildItem $bundle -Recurse -File | ForEach-Object { Write-Host ('  ' + $_.FullName.Substring($bundle.Length + 1)) }

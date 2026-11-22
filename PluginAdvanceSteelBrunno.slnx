@@ -12,6 +12,9 @@
     <Project Path="src/Pasb.Connector/Pasb.Connector.csproj" />
     <Project Path="src/Pasb.Mcp/Pasb.Mcp.csproj" />
     <Project Path="src/Pasb.IfcImport.Model/Pasb.IfcImport.Model.csproj" />
+    <Project Path="src/Pasb.Joints/Pasb.Joints.csproj">
+      <Platform Project="x64" />
+    </Project>
     <Project Path="src/Pasb.IfcImport/Pasb.IfcImport.csproj">
       <Platform Project="x64" />
     </Project>

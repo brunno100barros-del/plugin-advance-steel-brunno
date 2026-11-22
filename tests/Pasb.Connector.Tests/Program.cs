@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -289,7 +289,7 @@ internal static class Program
         {
             var a = new V3(330.0128, 95.7679, 0); var b = new V3(1389.5217, 1353.1876, 0);
             double L = (b - a).Length;
-            var p = new BracingParams { Diagonals = BracingDiagonals.Diagonal1, TurnbuckleMode = TurnbucklePositionMode.FromCorner1, TurnbucklePosition = 1079.8 };
+            var p = new BracingParams { Diagonals = BracingDiagonals.Diagonal1, TurnbuckleMode = TurnbucklePositionMode.FromCorner1, TurnbuckleReference = TurnbuckleReference.Center, TurnbucklePosition = 1079.8 };
             BracingResult r = BracingGeometry.Build(a, b, p);
             True(r.Errors.Count == 0, string.Join("; ", r.Errors));
             V3 u = (b - a).Unit;
@@ -319,10 +319,10 @@ internal static class Program
         Run("contraventamento: X, opções e validação", () =>
         {
             var a = new V3(0, 0, 3000); var b = new V3(6000, 4000, 7777);
-            var p = new BracingParams();
+            var p = new BracingParams { TurnbuckleMode = TurnbucklePositionMode.Percent, TurnbucklePosition = 65 };
             BracingResult r = BracingGeometry.Build(a, b, p);
-            True(r.Errors.Count == 0 && r.DiagonalLines.Count == 2, "X com 2 diagonais (padrão 65%): " + string.Join("; ", r.Errors));
-            True(BracingGeometry.Build(a, b, new BracingParams { TurnbucklePosition = 50 }).Errors.Any(e => e.Contains("se chocam")), "X a 50%: esticadores no cruzamento são recusados");
+            True(r.Errors.Count == 0 && r.DiagonalLines.Count == 2, "X com 2 diagonais (65%): " + string.Join("; ", r.Errors));
+            True(BracingGeometry.Build(a, b, new BracingParams { TurnbuckleMode = TurnbucklePositionMode.Percent, TurnbucklePosition = 50 }).Errors.Any(e => e.Contains("se chocam")), "X a 50%: esticadores no cruzamento são recusados");
             True(r.Parts.Where(x => x.Kind is BracingPartKind.Rod).All(x => Math.Abs(x.Start.Z - (3000 + 6.35 + 6.35)) < 1e-6), "tudo no Z do primeiro ponto (chapa de base abaixo, gusset em cima)");
             var (q1, q2) = r.DiagonalLines[1];
             True(q1.X == 0 && q1.Y == 4000 && q2.X == 6000 && q2.Y == 0, "diagonal 2 entre os outros cantos");
@@ -339,6 +339,107 @@ internal static class Program
             True(BracingGeometry.Build(a, new V3(0, 5000, 0), new BracingParams()).Errors.Any(e => e.Contains("retângulo")), "pontos alinhados são recusados");
             string json = p.ToJson();
             True(BracingParams.FromJson(json).TurnbucklePosition == 100 && BracingParams.FromJson(json).Diagonals == BracingDiagonals.Diagonal2, "parâmetros ida e volta em JSON");
+        });
+
+        Run("contraventamento: esticador padrão a 300 mm do ponto clicado (até a ponta)", () =>
+        {
+            var a = new V3(0, 0, 0); var b = new V3(4000, 3000, 0);
+            V3 u = (b - a).Unit; double L = (b - a).Length;
+            double S(V3 pt) => V3.Dot(pt - a, u);
+            BracingResult r = BracingGeometry.Build(a, b, new BracingParams());
+            True(r.Errors.Count == 0, string.Join("; ", r.Errors));
+            var c1 = r.Parts.First(x => x.Kind == BracingPartKind.Cleat && x.Diagonal == 1);
+            True(Math.Abs(Math.Min(S(c1.Start), S(c1.End)) - 300) < 1e-6, "ponta do esticador a 300 mm do ponto 1");
+            var p2 = new BracingParams { Diagonals = BracingDiagonals.Diagonal1, TurnbuckleFromCorner2 = true };
+            var c2 = BracingGeometry.Build(a, b, p2).Parts.Single(x => x.Kind == BracingPartKind.Cleat);
+            True(Math.Abs(L - Math.Max(S(c2.Start), S(c2.End)) - 300) < 1e-6, "a partir do ponto 2: ponta a 300 mm do ponto 2");
+            var p3 = new BracingParams { Diagonals = BracingDiagonals.Diagonal1, TurnbuckleReference = TurnbuckleReference.Center };
+            var c3 = BracingGeometry.Build(a, b, p3).Parts.Single(x => x.Kind == BracingPartKind.Cleat);
+            True(Math.Abs((S(c3.Start) + S(c3.End)) / 2 - 300) < 1e-6, "medida até o centro");
+            string dir = Path.Combine(Path.GetTempPath(), "pasb-test-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            string f = Path.Combine(dir, "old.json");
+            File.WriteAllText(f, "{\"TurnbuckleMode\":\"Percent\",\"TurnbucklePosition\":65,\"GussetThickness\":9.5}");
+            BracingParams old = BracingSettings.Load(f);
+            True(old.TurnbuckleMode == TurnbucklePositionMode.FromCorner1 && old.TurnbucklePosition == 300 && old.GussetThickness == 9.5, "configuração da 0.10.0 migra para 300 mm e mantém o resto");
+            BracingSettings.Save(old, f);
+            True(BracingSettings.Load(f).TurnbucklePosition == 300, "configuração nova é lida como está");
+            Directory.Delete(dir, true);
+        });
+
+        Run("contraventamento: viga de apoio recorta a chapa no banzo e ganha solda", () =>
+        {
+            var a = new V3(0, 0, 0); var b = new V3(4000, 3000, 0);
+            // Viga ao longo de X passando pelo canto 1, banzo de 100 mm (meia largura 50).
+            var strip = new SupportStrip(new V3(0, 0, 0), new V3(1, 0, 0), 50, 7);
+            var p = new BracingParams { Diagonals = BracingDiagonals.Diagonal1 };
+            BracingResult r = BracingGeometry.Build(a, b, p, new[] { strip });
+            True(r.Errors.Count == 0, string.Join("; ", r.Errors));
+            var bases = r.Parts.Where(x => x.Kind == BracingPartKind.BasePlate).ToList();
+            True(bases[0].Polygon.All(q => q.Y >= 50 - 1e-6), "chapa do canto 1 cortada no contato: só fora do banzo, do lado do painel (Y ≥ 50)");
+            True(bases[0].Polygon.Count(q => Math.Abs(q.Y - 50) < 1e-6) >= 2, "borda cortada encosta no banzo");
+            var above = new SupportStrip(new V3(0, 0, 0), new V3(1, 0, 0), 50, 7, -300, -8);
+            var onTop = BracingGeometry.Build(a, b, p, new[] { above }).Parts.First(x => x.Kind == BracingPartKind.BasePlate);
+            True(onTop.Polygon.Length == 4 && Math.Abs(onTop.Polygon.Min(q => q.Y)) < 1e-6, "chapa apoiada em cima da viga (sem choque na cota) não é cortada");
+            var b0 = BracingGeometry.Build(a, b, new BracingParams { Diagonals = BracingDiagonals.Diagonal1 }).Parts.First(x => x.Kind == BracingPartKind.BasePlate);
+            True(b0.Polygon[0] == new V3(0, 0, 0) && b0.Polygon.All(q => q.X >= -1e-6 && q.Y >= -1e-6 && q.X <= 150 + 1e-6 && q.Y <= 150 + 1e-6), "chapa alinhada à UCS com o canto no clique, para dentro do painel");
+            var cham = BracingGeometry.Build(a, b, new BracingParams { Diagonals = BracingDiagonals.Diagonal1, BaseChamferClick = 20, GussetEndChamfer = 10 }).Parts;
+            True(cham.First(x => x.Kind == BracingPartKind.BasePlate).Polygon.Length == 5 && cham.First(x => x.Kind == BracingPartKind.Gusset).Polygon.Length == 6, "chanfros: a4 na chapa de base e b10 nos 2 cantos do gusset");
+            var diagBase = BracingGeometry.Build(a, b, new BracingParams { Diagonals = BracingDiagonals.Diagonal1, BaseAlignment = BasePlateAlignment.Diagonal }).Parts.First(x => x.Kind == BracingPartKind.BasePlate);
+            True(diagBase.Polygon.Any(q => q.X < 0), "opção: chapa alinhada à diagonal (centrada)");
+            True(bases[1].Polygon.Any(q => Math.Abs(q.Y - 3000) > 60), "canto 2 sem viga: chapa inteira");
+            var w = r.Parts.Where(x => x.SupportTag == 7).ToList();
+            True(w.Count == 1 && w[0].Kind == BracingPartKind.Weld && r.Parts[w[0].Connects.Single()] == bases[0], "solda da chapa de base na viga");
+            True(BracingGeometry.SupportAt(new V3(0, 80, 0), new[] { strip }) == null, "canto fora do banzo não pega a viga");
+            var p2 = new BracingParams { Diagonals = BracingDiagonals.Diagonal1, WeldSupportOn = false, ThreadedRodProfile = "X#@§@#ROSCA", CleatRotation = 90, BaseTopBelowClick = 1 };
+            BracingResult r2 = BracingGeometry.Build(a, b, p2, new[] { strip });
+            True(!r2.Parts.Any(x => x.SupportTag >= 0), "h4 desligada");
+            True(r2.Parts.Where(x => x.Kind == BracingPartKind.ThreadedRod).All(x => x.Profile == "X#@§@#ROSCA"), "perfil próprio da barra roscada");
+            True(r2.Parts.Single(x => x.Kind == BracingPartKind.Cleat).Angle == 90, "rotação da cantoneira");
+            True(Math.Abs(r2.Parts.First(x => x.Kind == BracingPartKind.BasePlate).Polygon[0].Z - (-1)) < 1e-9, "a8: topo da chapa 1 mm abaixo do clique");
+        });
+
+        Run("antidobra: mesmo resultado da ligação de referência (3 filas, rígida em cima, 4 tirantes S S D D)", () =>
+        {
+            // Terças 75x40 (alma 2 mm) a 751 e 1667 mm uma da outra; pórticos a 3285 mm.
+            var purlins = new[]
+            {
+                new PurlinSection(0, 0, 2, -37.5, 37.5, -500, 4000),
+                new PurlinSection(1, 751.4, 2, -37.5, 37.5, -500, 4000),
+                new PurlinSection(2, 2418.4, 2, -37.5, 37.5, -500, 4000),
+            };
+            var L2 = new AngleSize(50.8, 50.8, 3.175);
+            SagResult r = SagRodGeometry.Build(purlins, 0, 3285, 0, 3285, new SagRodParams(), L2, L2);
+            True(r.Errors.Count == 0, "sem erros: " + string.Join("; ", r.Errors));
+            True(r.Rows.Count == 3 && Math.Abs(r.Rows[0] - 821.25) < 1e-6 && Math.Abs(r.Rows[2] - 2463.75) < 1e-6, "3 filas iguais");
+            int Count(SagPartKind k, string role = "") => r.Parts.Count(x => x.Kind == k && (role == "" || x.Role == role));
+            True(Count(SagPartKind.Rod, "Agulha") == 3 && Count(SagPartKind.Rod, "Tirante") == 4, "3 agulhas e 4 tirantes");
+            True(Count(SagPartKind.Angle, "Barra rígida") == 3 && Count(SagPartKind.Angle, "Cantoneira de ligação") == 6, "3 rígidas e 6 cantoneiras");
+            True(Count(SagPartKind.ThreadedRod) == 14, "14 pontas roscadas");
+            True(Count(SagPartKind.Nut) + Count(SagPartKind.Washer) == 56, "56 porcas e arruelas");
+            True(Count(SagPartKind.Weld) == 20 && Count(SagPartKind.Bolt) == 6 && Count(SagPartKind.Hole) == 14, "20 soldas, 6 parafusos, 14 furos");
+            SagPart needle = r.Parts.First(x => x.Role == "Agulha");
+            True(Math.Abs(needle.Start.X - 861.25) < 1e-6, "agulha da entreterça 1 deslocada 40 mm para o pórtico B");
+            True(Math.Abs(needle.Start.Y - 26) < 1e-6, "lisa começa 25 mm depois da face da alma");
+            SagPart rigid = r.Parts.First(x => x.Role == "Barra rígida");
+            True(Math.Abs(rigid.Start.X - (821.25 - 40 + 28)) < 1e-6 && Math.Abs(rigid.Start.Y - (752.4 + 2)) < 1e-6, "rígida: costas a 28 do parafuso, folga 2 da alma");
+            var bolt = r.Parts.First(x => x.Kind == SagPartKind.Bolt);
+            True(Math.Abs(bolt.Origin.X - 781.25) < 1e-6 && bolt.Purlin == 1, "parafuso na alma da terça 2");
+            var ties = r.Parts.Where(x => x.Role == "Tirante").ToList();
+            True(Math.Abs(ties[0].Start.X - 100) < 1e-6 && Math.Abs(ties[0].End.X - 721.25) < 1e-6, "tirante 1 sobe: do pórtico A (recuo 100) à fila 1 (100 antes)");
+            True(Math.Abs(ties[2].Start.X - 2363.75) < 1e-6 && Math.Abs(ties[2].End.X - 1742.5) < 1e-6, "tirante 3 desce: embaixo perto da fila 3, em cima perto da fila 2");
+            True(Math.Abs(ties[0].Start.Y - (752.4 + 20)) < 1e-6, "ponta do tirante 20 mm atrás da alma");
+            var thr = r.Parts.First(x => x.Id == ties[0].Id + "_R0");
+            True(Math.Abs((thr.End - thr.Start).Length - 75) < 1e-6 && Math.Abs(thr.End.X - thr.Start.X) < 1e-9, "ponta roscada de 75 mm perpendicular à alma");
+
+            var p2 = new SagRodParams { RowMode = SagRowMode.Spacing, RowSpacing = 1500, RigidBays = "", NoRodBays = "2", Ties = false, RodSplice = SagSplice.Lap, DoubleCrossed = false };
+            SagResult r2 = SagRodGeometry.Build(purlins, 0, 3285, 0, 3285, p2, L2, L2);
+            True(r2.Rows.Count == 2 && r2.Parts.Count(x => x.Role == "Agulha") == 2, "espaçamento 1500 em 3285: 2 filas; entreterça 2 sem agulha");
+            True(r2.Parts.Count(x => x.Kind == SagPartKind.Weld) == 8, "traspasse: 2 cordões em cada ponta");
+            True(SagRodGeometry.ParseBays("1 T 9 x", 4).SetEquals(new[] { 1, 4 }), "lista de entreterças");
+            True(SagRodGeometry.Build(purlins.Take(1).ToList(), 0, 3285, 0, 3285, new SagRodParams(), L2, L2).Errors.Count > 0, "uma terça só é recusada");
+            var j = SagRodParams.FromJson(new SagRodParams { RowCount = 5, TieDirection = SagTieDirection.Cross }.ToJson());
+            True(j.RowCount == 5 && j.TieDirection == SagTieDirection.Cross, "configuração em JSON");
         });
 
         // ------------------------------------------------------------------ ponte local

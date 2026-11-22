@@ -1,58 +1,60 @@
-# Macro: contraventamento em X (versão 0.10.0)
+# Macro: contraventamento em X (versão 0.11.0)
 
-Os botões **PASB > Macros > Contraventamento em X** e **Editar contravent.** (comandos `PASB_CONTRAVENTAMENTO` e `PASB_EDITAR_CONTRAVENTAMENTO`) criam um contraventamento em X com barra redonda e esticador. O detalhe foi reproduzido a partir do **resultado** de uma macro de terceiros que o usuário criou no desenho e o PASB leu pelo Conector IA. O código e os blocos são **próprios do PASB**, sem nenhuma dependência de outro plugin.
+A partir da 0.11.0, o contraventamento é uma **ligação nativa do Advance Steel** (interface `IRule` do SDK): aparece como caixa cinza de ligação, edita com **duplo clique** (abas de parâmetros, "Atualizar agora", "Automático") e se recalcula quando as entradas mudam. O código, os textos, as imagens e os blocos de porca e arruela são **próprios do PASB**, sem dependência de outro plugin.
 
-> Status: geometria testada fora do Advance Steel (reproduz as medidas do exemplo com 0,15 mm de tolerância; 62 peças, como no exemplo). A **criação das peças dentro do Advance Steel ainda não foi testada**.
+> Status: geometria testada fora do Advance Steel. A **ligação nativa ainda não foi testada dentro do Advance Steel**.
+
+## Registro (uma vez por versão)
+
+Com o Advance Steel **fechado**, rode `Registrar-Macros-PASB.cmd` (vem no pacote de instalação). Ele usa `Contents\Joints\Register-NativeJoints.ps1` e:
+
+1. copia `PasbJoints.dll` para `C:\Program Files\Autodesk\AutoCAD 2027\ADVS` (o Windows pede administrador só para isso);
+2. registra a ligação no banco `AstorRules` (`RulesDllSigned` 880000, `HRLDefinition` 880000, nome interno `PasbContraventamento`, Tech 2, Version 31);
+3. grava os nomes das abas e os textos dos cliques no banco `AstCrtlDb` (`ErrorMessages` 880000–880022, Note `PASB`).
+
+Antes de alterar os bancos, faz backup completo de cada um em `%LOCALAPPDATA%\PASB\backup-bancos\<data>`. Só mexe nas linhas do PASB (faixa 880000–880999). `Remover-Macros-PASB.cmd` desfaz tudo.
 
 ## Uso
 
-1. Clique o **ponto 1** e o **ponto 2**, que são cantos opostos do retângulo. Tudo é criado no **plano XY, na cota Z do ponto 1**. Para contraventamento lateral, mude o Z (UCS) do projeto.
-2. Na janela, ajuste qualquer parâmetro. A prévia em planta e a validação são atualizadas na hora.
-3. **Gerar**. Para mudar depois: **Editar contravent.**, selecione qualquer peça, ajuste e clique em **Regerar** (as peças antigas são apagadas e geradas de novo).
+1. **PASB > Contraventamento em X** (ou o comando `AstM4CrConByVB PasbContraventamento`).
+2. Clique o **1º canto** e o **canto oposto**. O contraventamento fica no **plano XY da UCS atual**, na cota Z do 1º clique. Para contraventamento lateral, mude a UCS.
+3. Selecione as **vigas de apoio** (banzos) para soldar, ou ENTER para pular. Em cada canto que cair sobre uma viga, a chapa de base é **recortada na largura do banzo** e soldada na viga (solda h4).
+4. Para mudar: **duplo clique na caixa cinza** da ligação.
 
-## Montagem de cada diagonal
+As entradas da ligação são 2 pontos do usuário (um em cada clique) e as vigas escolhidas. Mover os pontos ou as vigas recalcula a ligação.
 
-| Trecho | Peças (valores padrão) |
+## Abas
+
+| Aba | Parâmetros |
 |---|---|
-| Canto | Chapa de base 8 × 150 × 150 (topo no Z do ponto), gusset 6,35 × 160 × 50 sobre ela, alinhado com a diagonal, a 54,5 mm do ponto. 1 parafuso Ø12,7 (ASTM A325, 10.9) a 30 mm do início do gusset |
-| Barra | RB 1/2" (`AISC RoundBar#@§@#RB 1/2`), ASTM A36, apoiada 100 mm sobre o gusset e soldada (cordão de 5 mm) |
-| Emenda | Barra lisa ↔ barra roscada (mesma seção, 125 mm), com 2 talas de 60 mm lado a lado, soldadas (cordão de 4 mm) |
-| Esticador | Cantoneira `AISC 15.0 Angle equal#@§@#L2X2X1/8` × 140 mm com 2 chapas de topo 4,75 × 47 × 45 (recuo de 10 mm), soldadas (cordão de 4 mm). As roscas entram 35 mm além da chapa de topo. **Porca e arruela dos dois lados** de cada chapa |
-| Posição | Centro do esticador a **65 %** da diagonal (ou em mm a partir do canto 1) |
+| 1 - Geral | Diagonais (X, só a 1, só a 2); posição do esticador: % da diagonal ou mm do clique, até a ponta ou o centro, a partir do 1º ou do 2º clique (padrão: ponta a 300 mm do 1º clique) |
+| 2 - Chapa de base | a0 criar, a1 comprimento, a2 largura, a3 espessura, a4 centro a partir do clique, a8 topo abaixo do clique, material (catálogo) |
+| 3 - Gusset | b1 comprimento, b2 largura, b3 espessura, b4 recuo do clique, b7 barra apoiada |
+| 4 - Parafuso | criar; norma, classe, diâmetro e conjunto (seletor de parafuso do Advance Steel); c1 distância à ponta do gusset |
+| 5 - Barras | perfis e materiais **do catálogo** da barra, da barra roscada e das talas; d2 comprimento da rosca, d3 rosca dentro do esticador, e0 talas, e1 comprimento das talas |
+| 6 - Esticador | cantoneira e material (catálogo), f1 rotação, f3 comprimento, f4/f5/f6 chapa de topo, f8 recuo da chapa de topo |
+| 7 - Porcas e arruelas | g0 criar; medidas da porca e da arruela (blocos PASB) |
+| 8 - Soldas | oficina ou montagem; h1 barra x gusset, h2 emenda, h3 cantoneira x chapa de topo, h4 chapa de base x viga de apoio (liga/desliga e espessura) |
 
-Em **X**, a diagonal 2 liga os outros dois cantos do retângulo. A validação recusa:
-- esticadores que se chocariam no cruzamento;
-- esticador em cima de gusset;
-- parafuso sem chapa de base;
-- pontos alinhados em X ou em Y.
+Novos contraventamentos começam com a última configuração salva pela janela antiga (`%APPDATA%\PASB\bracing-settings.json`) ou com os padrões.
 
 ## Porcas e arruelas
 
-São blocos AutoCAD **criados pelo PASB** no próprio desenho (sólidos 3D com furo), com nomes que trazem as medidas, por exemplo `PASB_PORCA_S22.2_H12.3_D13.5` e `PASB_ARRUELA_D27_d13.5_t3.4`. Entram como **peças especiais** do Advance Steel. Medidas padrão (1/2"):
-- porca A194-2H: entre faces 22,2 e altura 12,3;
-- arruela F436: Ø 27 / 13,5 × 3,4.
+Blocos AutoCAD **criados pelo PASB** no desenho (sólidos 3D com furo), com as medidas no nome (`PASB_PORCA_S22.2_H12.3_D13.5`, `PASB_ARRUELA_D27_d13.5_t3.4`). Entram como peças especiais.
 
-## Parâmetros guardados
+## Versão simples (antes da 0.11.0)
 
-- Cada peça recebe XData `PASB_CV` com o identificador do contraventamento.
-- Os parâmetros, os 2 pontos e a lista de peças ficam em `PASB_CONTRAVENTAMENTOS` (dicionário do desenho). É isso que permite **editar e regerar**.
-- A última configuração usada fica em `%APPDATA%\PASB\bracing-settings.json`.
-
-## Segurança
-
-- Se uma peça principal falhar, por exemplo um perfil que não existe no catálogo, **nada é gravado** e o erro é mostrado. Peças principais são barras, roscas, cantoneira e gussets.
-- Se falhar uma peça secundária (talas, solda, parafuso, porca), ela é pulada, as outras são criadas e um aviso é mostrado.
-- O desenho precisa estar em **milímetros**.
+Sem o registro, o botão usa a versão simples (peças soltas, sem caixa de ligação), avisando na linha de comando. Contraventamentos da versão simples editam com **botão direito > PASB: Editar contraventamento**.
 
 ## Primeiro teste no Advance Steel (roteiro)
 
-1. Num desenho **novo** em milímetros, rode **Contraventamento em X** com 2 pontos a ~1.000 × 1.300 mm, para comparar com o exemplo.
-2. Confira: barras, gussets, chapas de base, parafusos, esticadores, porcas e arruelas, soldas (no gerenciador de conexões do Advance Steel).
-3. Teste **Editar contravent.**: mude a posição do esticador e regere.
-4. Teste o **Ctrl+Z**.
+1. Num desenho em milímetros com 2 vigas paralelas, rode **Contraventamento em X**, clique 2 cantos sobre os banzos e selecione as vigas.
+2. Confira: caixa cinza de ligação, chapas recortadas no banzo, soldas na viga, esticador a 300 mm.
+3. Duplo clique na caixa: confira as 8 abas, as imagens e os seletores de perfil, material e parafuso.
+4. Mude um parâmetro e veja a ligação se atualizar. Mova uma viga e veja o recálculo.
 
 ## Possíveis ajustes após o primeiro teste
 
-- Orientação da cantoneira do esticador em relação à barra (depende do ponto de inserção do perfil no Advance Steel).
-- Lado em que as chapas ficam em relação ao plano (`Portioning`).
-- Comprimento do parafuso: o Advance Steel calcula pela espessura das chapas ligadas.
+- Orientação da cantoneira (agora ajustável na aba 6, f1).
+- Lado das chapas em relação ao plano (`Portioning`).
+- Nome do conjunto de parafuso (`NaW`) conforme o catálogo instalado.
