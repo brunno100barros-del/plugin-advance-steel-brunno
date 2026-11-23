@@ -27,8 +27,9 @@ internal static class ObjectReader
         "AtomicElement.AssemblyUsedForNumbering",
     };
 
-    private static HashSet<string> ExcludedGetters =>
-        Commands.WriteWithDiscard ? new HashSet<string>(StringComparer.Ordinal) : ReadOnlyCrashGetters;
+    private static readonly HashSet<string> NoExclusions = new(StringComparer.Ordinal);
+
+    private static HashSet<string> ExcludedGetters => Commands.WriteWithDiscard ? NoExclusions : ReadOnlyCrashGetters;
 
     /// <summary>Motivo registrado no JSON para cada getter excluído.</summary>
     private const string ExclusionReason =
@@ -36,11 +37,14 @@ internal static class ObjectReader
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> GetterCache = new();
 
-    /// <param name="trace">Recebe uma linha antes de cada leitura (ver TraceLog).</param>
-    public static (JsonObject header, List<PropertyRecord> records, string objectType) Read(FilerObject o, Action<string> trace)
+    /// <param name="trace">Recebe uma linha antes de cada leitura (ver TraceLog); nulo = sem trace por leitura.</param>
+    public static (JsonObject header, List<PropertyRecord> records, string objectType) Read(FilerObject o, Action<string>? trace,
+        ReadProfile profile = ReadProfile.Diagnostic)
     {
         Type t = o.GetType();
+        // Sem trace por leitura, o RecordBuilder nem monta o texto de cada passo.
         var b = new RecordBuilder(AsValueSerializer.TrySerialize, trace);
+        Action<string> step = trace ?? (static _ => { });
 
         // 5.1 Identidade
         var header = new JsonObject
@@ -48,19 +52,19 @@ internal static class ObjectReader
             ["clrType"] = t.FullName,
             ["inheritance"] = new JsonArray(Inheritance(t).Select(n => (JsonNode)JsonValue.Create(n)!).ToArray()),
         };
-        trace("identidade: Handle");
+        step("identidade: Handle");
         TryHeader(header, "handle", () => JsonValue.Create(o.Handle));
         header["transactionMode"] = Commands.TransactionMode;
         if (ExcludedGetters.Contains("FilerObject.ASId"))
             header["asIdExcluded"] = ExclusionReason;
         else
         {
-            trace("identidade: ASId");
+            step("identidade: ASId");
             TryHeader(header, "asId", () => JsonValue.Create(o.ASId));
         }
-        trace("identidade: GetUniqueId");
+        step("identidade: GetUniqueId");
         TryHeader(header, "uniqueId", () => JsonValue.Create(o.GetUniqueId().ToString("D")));
-        trace("identidade: Type");
+        step("identidade: Type");
         TryHeader(header, "objectType", () => ValueSerializer.EnumValue(o.Type()));
 
         // 5.2 Getters automáticos (públicos, de instância, legíveis, sem índice, incluindo herdados)
@@ -82,7 +86,7 @@ internal static class ObjectReader
         }
 
         // 5.3 Métodos aprovados, chamados explicitamente
-        ApprovedMethods.Read(o, b);
+        ApprovedMethods.Read(o, b, profile);
 
         return (header, b.Records, t.Name);
     }

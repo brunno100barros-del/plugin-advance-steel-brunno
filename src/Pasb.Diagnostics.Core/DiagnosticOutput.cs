@@ -16,12 +16,15 @@ public sealed class DiagnosticOutput : IDisposable
 
     private readonly StreamWriter _objects;
 
-    public DiagnosticOutput(string directory)
+    /// <param name="flushEachObject">
+    /// true (diagnóstico): cada objeto vai para o disco assim que é lido, para sobreviver a uma queda do AutoCAD.
+    /// false (exportação): gravação com buffer; o arquivo só fica completo em Finish/Dispose.
+    /// </param>
+    public DiagnosticOutput(string directory, bool flushEachObject = true)
     {
         Directory.CreateDirectory(directory);
         DirectoryPath = directory;
-        // AutoFlush: cada objeto vai para o disco assim que é lido, para sobreviver a uma queda do AutoCAD.
-        _objects = new StreamWriter(Path.Combine(directory, "objects.jsonl"), false, new UTF8Encoding(false)) { AutoFlush = true };
+        _objects = new StreamWriter(Path.Combine(directory, "objects.jsonl"), false, new UTF8Encoding(false), 1 << 16) { AutoFlush = flushEachObject };
         Coverage = new CoverageReport();
     }
 

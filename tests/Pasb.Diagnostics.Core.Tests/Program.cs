@@ -28,6 +28,8 @@ internal static class Program
         Run(nameof(OutputWritesAllFiles), OutputWritesAllFiles);
         Run(nameof(TraceIsWrittenBeforeEachRead), TraceIsWrittenBeforeEachRead);
         Run(nameof(TraceSurvivesWithoutDispose), TraceSurvivesWithoutDispose);
+        Run(nameof(FastTraceSurvivesWithoutDispose), FastTraceSurvivesWithoutDispose);
+        Run(nameof(BufferedOutputIsCompleteAfterFinish), BufferedOutputIsCompleteAfterFinish);
 
         Console.WriteLine($"{_passed} passaram, {_failed} falharam");
         return _failed == 0 ? 0 : 1;
@@ -157,10 +159,15 @@ internal static class Program
     }
 
     /// <summary>Simula a queda: o arquivo é lido sem fechar o TraceLog; as linhas já precisam estar no disco.</summary>
-    private static void TraceSurvivesWithoutDispose()
+    private static void TraceSurvivesWithoutDispose() => TraceSurvives(durable: true);
+
+    /// <summary>Modo de trabalho: sem gravação física, mas cada linha já foi entregue ao sistema (sobrevive à queda do AutoCAD).</summary>
+    private static void FastTraceSurvivesWithoutDispose() => TraceSurvives(durable: false);
+
+    private static void TraceSurvives(bool durable)
     {
         string path = Path.Combine(Path.GetTempPath(), "pasb-trace-" + Guid.NewGuid().ToString("N") + ".log");
-        var t = new TraceLog(path);
+        var t = new TraceLog(path, durable);
         try
         {
             t.Write("passo 1");
@@ -175,6 +182,32 @@ internal static class Program
         {
             t.Dispose();
             File.Delete(path);
+        }
+    }
+
+    /// <summary>Modo de trabalho: objects.jsonl com buffer fica completo depois de Finish/Dispose.</summary>
+    private static void BufferedOutputIsCompleteAfterFinish()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "pasb-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using (var o = new DiagnosticOutput(dir, flushEachObject: false))
+            {
+                for (int i = 0; i < 500; i++)
+                {
+                    var b = new RecordBuilder();
+                    b.Read("A", "T", ReadSource.Getter, null, typeof(int), () => i);
+                    o.WriteObject(new JsonObject { ["handle"] = i.ToString("X") }, "Tipo", b.Records);
+                }
+                o.Finish(new JsonObject { ["command"] = "teste" });
+            }
+            string[] lines = File.ReadAllLines(Path.Combine(dir, "objects.jsonl"));
+            Equal(500, lines.Length, "linhas jsonl");
+            Equal("1F3", JsonNode.Parse(lines[^1])!["handle"]!.GetValue<string>(), "último objeto");
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
         }
     }
 

@@ -21,10 +21,21 @@ internal static class ApprovedMethods
     /// <summary>Quantidade de User Attributes: kUserAttr1..kUserAttr10 em Modelling.eObjectsAttribute.</summary>
     public const int UserAttributeCount = 10;
 
-    public static void Read(FilerObject o, RecordBuilder b)
+    /// <summary>
+    /// Leituras omitidas na exportação (<see cref="ReadProfile.Export"/>): caras e não usadas pela geometria nem pelo IFC.
+    /// GetQuantityInModel conta as peças iguais no modelo inteiro a cada objeto (tempo quadrático no número de objetos);
+    /// GetModelerBodyList calcula o sólido de cada peça só para contar os corpos. O diagnóstico continua lendo as duas.
+    /// </summary>
+    public static readonly string[] OmittedInExport =
+    {
+        "AtomicElement.GetQuantityInModel",
+        "AtomicElement.GetModelerBodyList(kNormal)",
+    };
+
+    public static void Read(FilerObject o, RecordBuilder b, ReadProfile profile = ReadProfile.Diagnostic)
     {
         if (o is ConstructionElement ce) AttributeStatus(ce, b);
-        if (o is AtomicElement ae) Atomic(ae, b);
+        if (o is AtomicElement ae) Atomic(ae, b, profile);
         if (o is Beam beam) BeamMethods(beam, b);
         if (o is PlateBase plate) PlateMethods(plate, b);
         if (o is BoltPattern bolts) BoltMethods(bolts, b);
@@ -51,8 +62,9 @@ internal static class ApprovedMethods
 
     // ------------------------------------------------------------------ AtomicElement
 
-    private static void Atomic(AtomicElement ae, RecordBuilder b)
+    private static void Atomic(AtomicElement ae, RecordBuilder b, ReadProfile profile)
     {
+        bool full = profile == ReadProfile.Diagnostic;
         const string d = "AtomicElement";
         M(b, d, "GetSinglePartPositionNumber", null, typeof(string), () => ae.GetSinglePartPositionNumber());
         M(b, d, "GetMainPartPositionNumber", null, typeof(string), () => ae.GetMainPartPositionNumber());
@@ -81,7 +93,7 @@ internal static class ApprovedMethods
             int n = ae.GetExternalNames(out IEnumerable<string> names, out IEnumerable<int> found, out IEnumerable<int> alt);
             return Outs(("returned", n), ("externalNames", names?.ToList()), ("found", found?.ToList()), ("alternativeSearching", alt?.ToList()));
         });
-        M(b, d, "GetQuantityInModel", null, typeof(int), () => ae.GetQuantityInModel());
+        if (full) M(b, d, "GetQuantityInModel", null, typeof(int), () => ae.GetQuantityInModel());
         M(b, d, "GetConnection", null, typeof(object), () => ae.GetConnection());
         M(b, d, "GetFeatures", "true", typeof(object), () => ae.GetFeatures(true)?.ToList());
         M(b, d, "GetFeatures", "false", typeof(object), () => ae.GetFeatures(false)?.ToList());
@@ -94,8 +106,8 @@ internal static class ApprovedMethods
             M(b, d, "GetUserAttributeUsedForNumbering", idx.ToString(), typeof(int), () => ae.GetUserAttributeUsedForNumbering(idx));
         }
 
-        // Geometria sólida: na primeira fase, só se existe corpo e quantos (seção 5.3).
-        M(b, d, "GetModelerBodyList", nameof(BodyContext.eBodyContext.kNormal), typeof(JsonObject), () =>
+        // Geometria sólida: na primeira fase, só se existe corpo e quantos (seção 5.3). Omitida na exportação.
+        if (full) M(b, d, "GetModelerBodyList", nameof(BodyContext.eBodyContext.kNormal), typeof(JsonObject), () =>
         {
             bool ok = ae.GetModelerBodyList(BodyContext.eBodyContext.kNormal, out ModelerBody[] bodies);
             return Outs(("returned", ok), ("bodyCount", bodies?.Length));

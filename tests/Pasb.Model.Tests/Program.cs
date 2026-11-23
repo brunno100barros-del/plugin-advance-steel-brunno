@@ -61,6 +61,14 @@ Run("sem INSUNITS em mm: comprimento sem normalização", () =>
     Eq(null, y.Elements[0].Properties.Single(p => p.Key == "Beam.SysLength").NormalizedValue, "sem normalizar");
     Eq(true, y.Elements[0].Properties.Single(p => p.Key == "Beam.GetWeight(1)").NormalizedValue.HasValue, "peso independe");
 });
+Run("leituras omitidas na exportação viram aviso, sem marcar os elementos como parciais", () =>
+{
+    const string RunExport = """{"insunits":"Millimeters","readProfile":"export","omittedReads":["AtomicElement.GetQuantityInModel","AtomicElement.GetModelerBodyList(kNormal)"]}""";
+    Extraction y = DiagnosticImporter.Import(RunExport, new[] { Beam });
+    Eq(true, y.Info.Warnings.Any(w => w.Contains("omitidas") && w.Contains("GetQuantityInModel") && w.Contains("GetModelerBodyList")), "aviso");
+    Eq(x.Elements[0].Status, y.Elements[0].Status, "status igual ao do diagnóstico");
+    Eq(false, x.Info.Warnings.Any(w => w.Contains("omitidas")), "diagnóstico sem aviso");
+});
 Run("JSON serializa enums como texto", () => Eq(true, NeutralModelJson.Serialize(x).Contains("\"Status\": \"Unsupported\""), "enum"));
 
 const string PlateJson = """{"handle":"C7","clrType":"Autodesk.AdvanceSteel.Modelling.Plate","inheritance":["Plate","PlateBase","MainAlias","AtomicElement","ActiveConstructionElement","ConstructionElement","FilerObject"],"properties":[{"technicalName":"GetBaseContourPolygon","declaringType":"PlateBase","argument":"0","source":"method","dataType":"P","status":"Read","rawValue":[[0,0,0],[196,0,0],[196,100,0],[0,100,0]]},{"technicalName":"PlateNormal","declaringType":"PlateBase","source":"getter","dataType":"V","status":"Read","rawValue":[0,0,1]},{"technicalName":"Thickness","declaringType":"PlateBase","source":"getter","dataType":"System.Double","status":"Read","rawValue":4.75}]}""";

@@ -98,8 +98,14 @@ public sealed class Commands
     }
 
     /// <summary>Lê os objetos e grava a saída do diagnóstico. Retorna a pasta de saída e se o modelo ficou intacto.</summary>
-    internal static (string outDir, bool safe) Run(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect)
+    /// <param name="profile">
+    /// Diagnostic: trace gravado no disco físico antes de cada leitura. Export: trace só por objeto, sem esperar o disco,
+    /// e sem as leituras de ApprovedMethods.OmittedInExport (docs/EXPORT-PERFORMANCE.md).
+    /// </param>
+    internal static (string outDir, bool safe) Run(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect,
+        ReadProfile profile = ReadProfile.Diagnostic)
     {
+        bool diagnostic = profile == ReadProfile.Diagnostic;
         AcDoc doc = AcApp.DocumentManager.MdiActiveDocument;
         DateTime startedLocal = DateTime.Now;
         var clock = Stopwatch.StartNew();
@@ -117,14 +123,17 @@ public sealed class Commands
             ["dbmodBefore"] = dbmodBefore?.ToString(),
             // Valores criados sob demanda durante a leitura (por exemplo, IDs) podem não existir no modelo salvo.
             ["transactionMode"] = TransactionMode,
+            ["readProfile"] = diagnostic ? "diagnostic" : "export",
         };
+        if (!diagnostic)
+            run["omittedReads"] = new JsonArray(ApprovedMethods.OmittedInExport.Select(n => (JsonNode)JsonValue.Create(n)!).ToArray());
 
         string outDir = DiagnosticOutput.DefaultDirectory(startedLocal);
         int openErrors = 0, objectErrors = 0;
         string discard = "não chamado";
 
-        using (var output = new DiagnosticOutput(outDir))
-        using (var trace = new TraceLog(output.TracePath))
+        using (var output = new DiagnosticOutput(outDir, flushEachObject: diagnostic))
+        using (var trace = new TraceLog(output.TracePath, durable: diagnostic))
         {
             trace.Write($"inicio {command} versao {DiagnosticVersion} DBMOD={dbmodBefore}");
             using (doc.LockDocument())
@@ -168,7 +177,8 @@ public sealed class Commands
                         {
                             string h = SafeHandle(ids[i]) ?? "?";
                             trace.Write($"[{i + 1}/{ids.Length}] tipo={o.GetType().Name}");
-                            var (header, records, objectType) = ObjectReader.Read(o, step => trace.Write($"  {h} {step}"));
+                            Action<string>? perRead = diagnostic ? step => trace.Write($"  {h} {step}") : null;
+                            var (header, records, objectType) = ObjectReader.Read(o, perRead, profile);
                             output.WriteObject(header, objectType, records);
                             trace.Write($"[{i + 1}/{ids.Length}] gravado ({records.Count} leituras)");
                         }
@@ -178,7 +188,7 @@ public sealed class Commands
                             output.WriteOpenFailure(SafeHandle(ids[i]), ex);
                         }
 
-                        if ((i + 1) % 200 == 0) ed.WriteMessage($"\nPASB: {i + 1}/{ids.Length}...");
+                        if ((i + 1) % 200 == 0) Progress(ed, i + 1, ids.Length, clock.Elapsed);
                     }
                 }
                 finally
@@ -270,6 +280,17 @@ public sealed class Commands
         trace.Write($"mapa de tipos: {map.Count} objetos");
         return map;
     }
+
+    /// <summary>Progresso na linha de comando com tempo decorrido e estimativa do restante.</summary>
+    private static void Progress(Editor ed, int done, int total, TimeSpan elapsed)
+    {
+        double rate = done / Math.Max(elapsed.TotalSeconds, 0.001);
+        TimeSpan left = TimeSpan.FromSeconds((total - done) / Math.Max(rate, 0.001));
+        ed.WriteMessage($"\nPASB: {done}/{total} objetos, {Clock(elapsed)} decorrido, ~{Clock(left)} restante...");
+    }
+
+    /// <summary>m:ss, sem estourar em 60 minutos.</summary>
+    internal static string Clock(TimeSpan t) => $"{(int)t.TotalMinutes}:{t.Seconds:00}";
 
     private static object? SysVar(string name)
     {

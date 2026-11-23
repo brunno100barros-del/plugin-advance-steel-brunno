@@ -43,7 +43,7 @@ public sealed class NumberingCommand
             {
                 DatabaseManager.GetModelObjectIds(out AsId[] ids);
                 return (ids ?? Array.Empty<AsId>(), 0);
-            });
+            }, Pasb.Diagnostics.Core.ReadProfile.Export);
             if (!safe) { ed.WriteMessage("\nPASB: numeração cancelada: a verificação da leitura falhou. Feche o desenho SEM SALVAR.\n"); return; }
             Extraction x = DiagnosticImporter.ImportDirectory(dir);
 

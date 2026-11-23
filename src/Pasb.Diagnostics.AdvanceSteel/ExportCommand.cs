@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -81,17 +82,30 @@ public sealed class ExportCommand
                 collect = () => { DatabaseManager.GetModelObjectIds(out AsId[] ids); return (ids ?? Array.Empty<AsId>(), 0); };
             }
 
-            // Leitura (escrita descartada, DBMOD conferido) → modelo neutro → IFC
-            var (outDir, safe) = Commands.Run(ed, "PASB_EXPORTAR_IFC", collect);
+            // Leitura (escrita descartada, DBMOD conferido) → modelo neutro → IFC.
+            // Perfil de exportação: sem gravação física no disco a cada leitura e sem as leituras caras (docs/EXPORT-PERFORMANCE.md).
+            var total = Stopwatch.StartNew();
+            var (outDir, safe) = Commands.Run(ed, "PASB_EXPORTAR_IFC", collect, Pasb.Diagnostics.Core.ReadProfile.Export);
+            long readMs = total.ElapsedMilliseconds;
             if (!safe)
             {
                 ed.WriteMessage("\nPASB: exportação interrompida: a verificação de integridade do modelo falhou. Feche o desenho SEM SALVAR.\n");
                 return;
             }
+            ed.WriteMessage("\nPASB: convertendo para o modelo neutro...");
             Extraction x = DiagnosticImporter.ImportDirectory(outDir);
             x.SourceDocument.Name = Path.GetFileName(doc.Name);
+            long importMs = total.ElapsedMilliseconds - readMs;
+            ed.WriteMessage("\nPASB: gerando o IFC...");
             string ifc = IfcExporter.Export(x, settings.ToExportOptions(unit), out ExportReport report);
+            long ifcMs = total.ElapsedMilliseconds - readMs - importMs;
             File.WriteAllText(settings.OutputPath, ifc, new UTF8Encoding(false));
+            long writeMs = total.ElapsedMilliseconds - readMs - importMs - ifcMs;
+            report.TimingsMs["leitura"] = readMs;
+            report.TimingsMs["conversao"] = importMs;
+            report.TimingsMs["ifc"] = ifcMs;
+            report.TimingsMs["gravacao"] = writeMs;
+            report.TimingsMs["total"] = total.ElapsedMilliseconds;
             string reportPath = Path.ChangeExtension(settings.OutputPath, ".report.json");
             File.WriteAllText(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
 
@@ -101,6 +115,9 @@ public sealed class ExportCommand
             foreach (var kv in report.SkippedByCategory) summary.AppendLine($"Não exportado ({kv.Key}): {kv.Value}");
             summary.AppendLine().AppendLine($"{report.Properties} propriedades em {report.PropertySets} Psets.");
             if (report.Georeference != null) summary.AppendLine($"Georreferência: {report.Georeference["crs"]}");
+            summary.AppendLine($"Tempo: {Commands.Clock(TimeSpan.FromMilliseconds(total.ElapsedMilliseconds))} " +
+                $"(leitura {Commands.Clock(TimeSpan.FromMilliseconds(readMs))}, conversão {Commands.Clock(TimeSpan.FromMilliseconds(importMs))}, " +
+                $"IFC {Commands.Clock(TimeSpan.FromMilliseconds(ifcMs + writeMs))}).");
             ed.WriteMessage("\nPASB: " + summary.ToString().Replace(Environment.NewLine, "\nPASB: ") + "\n");
             MessageBox.Show(summary.ToString(), "PASB — Exportação concluída", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }

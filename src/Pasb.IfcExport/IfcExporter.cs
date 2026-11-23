@@ -22,6 +22,8 @@ public sealed class ExportReport
     public List<string> Warnings { get; } = new();
     public JsonObject? Georeference { get; set; }
     public string GlobalIdPolicy { get; set; } = "";
+    /// <summary>Tempo de cada etapa da exportação, em milissegundos (leitura, conversão, IFC, gravação).</summary>
+    public Dictionary<string, long> TimingsMs { get; } = new(StringComparer.Ordinal);
 }
 
 public sealed record ExportOptions(string ProjectName = "Projeto Advance Steel", string FileName = "modelo.ifc", GeoParameters? Geo = null)

@@ -58,7 +58,7 @@ public sealed class MaterialTableCommand
             {
                 DatabaseManager.GetModelObjectIds(out AsId[] ids);
                 return (ids ?? Array.Empty<AsId>(), 0);
-            });
+            }, Pasb.Diagnostics.Core.ReadProfile.Export);
             if (!safe)
             {
                 ed.WriteMessage("\nPASB: lista cancelada: a verificação de integridade da leitura falhou. Feche o desenho SEM SALVAR.\n");

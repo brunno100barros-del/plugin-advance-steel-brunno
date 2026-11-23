@@ -36,6 +36,10 @@ public static class DiagnosticImporter
         x.Info.TransactionMode = Str(run, "transactionMode");
         if (x.Info.TransactionMode == "write-discarded")
             x.Info.Warnings.Add("Leitura com escrita descartada: valores criados sob demanda (ex.: IDs) podem não existir no modelo salvo.");
+        // Leituras puladas de propósito na exportação (caras e sem uso no IFC): declaradas, nunca perdidas em silêncio.
+        if (run?["omittedReads"] is JsonArray omitted && omitted.Count > 0)
+            x.Info.Warnings.Add("Leituras omitidas na exportação por desempenho (use o Diagnóstico para obtê-las): " +
+                string.Join(", ", omitted.Select(v => v?.ToString())) + ".");
 
         bool millimeters = string.Equals(x.SourceDocument.DeclaredLengthUnit, "Millimeters", StringComparison.OrdinalIgnoreCase);
         if (!millimeters)

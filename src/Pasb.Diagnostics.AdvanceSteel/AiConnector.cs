@@ -206,7 +206,7 @@ public sealed class AiConnector
                 catch (System.Exception ex) when (ex is not BridgeException) { throw new BridgeException($"Handle {h} inválido neste desenho."); }
                 var (ids, _) = Commands.FromCad(new[] { id });
                 if (ids.Length == 0) throw new BridgeException($"O objeto {h} não é um objeto do Advance Steel.");
-                var (dir, safe) = Read(ed, "PASB_IA_LER_OBJETO", () => (ids, 0));
+                var (dir, safe) = Read(ed, "PASB_IA_LER_OBJETO", () => (ids, 0), profile: Pasb.Diagnostics.Core.ReadProfile.Diagnostic);
                 return ConnectorLogic.DescribeObject(Import(dir, doc), h, safe);
             }
             case ToolCatalog.MaterialList:
@@ -245,9 +245,11 @@ public sealed class AiConnector
         return (ids ?? Array.Empty<AsId>(), 0);
     }
 
-    private static (string dir, bool safe) Read(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect, bool requireSafe = true)
+    /// <param name="profile">Export (padrão) para o modelo inteiro; Diagnostic quando a IA pede o detalhe completo de objetos.</param>
+    private static (string dir, bool safe) Read(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect, bool requireSafe = true,
+        Pasb.Diagnostics.Core.ReadProfile profile = Pasb.Diagnostics.Core.ReadProfile.Export)
     {
-        var (dir, safe) = Commands.Run(ed, command, collect);
+        var (dir, safe) = Commands.Run(ed, command, collect, profile);
         if (!safe && requireSafe)
             throw new BridgeException("A verificação de integridade do modelo falhou (DBMOD mudou ou o descarte não confirmou). " +
                                       "Feche o desenho SEM SALVAR. Pasta do diagnóstico: " + dir);
