@@ -27,7 +27,13 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 - **Ou o pacote .zip:** [PASB-0.14.2.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.2.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
 - **Guia de instalação:** [INSTALACAO.md](INSTALACAO.md)
 
-Não precisa compilar nem de administrador. Com o **.exe**, é só executar (feche o Advance Steel antes). Com o **.zip**, extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
+Não precisa compilar. Feche o Advance Steel antes. Com o **.exe**, é só executar. Com o **.zip**, extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
+
+Em cada computador:
+- O plugin é instalado só para o seu usuário, sem administrador.
+- As ligações nativas (**Contraventamento em X** e **Sistema antidobra**) são registradas pelo próprio instalador. Responda **Sim** à pergunta e aceite o pedido de administrador do Windows, uma vez por versão. Antes de registrar, ele faz backup dos bancos do Advance Steel.
+- Se o Windows mostrar "O Windows protegeu o computador" (o `.exe` não tem assinatura digital), clique em **Mais informações → Executar assim mesmo**.
+- Se recusar o pedido de administrador, o plugin funciona, mas as duas ligações não: rode o instalador de novo.
 
 > [!TIP]
 > **0.14.2:** os instaladores (o `.exe` e o `Instalar-PASB.cmd`) passam a registrar as ligações nativas do **Contraventamento em X** e do **Sistema antidobra** (o Windows pede administrador uma vez). Antes, só o `Registrar-Macros-PASB.cmd` fazia isso; sem ele, o contraventamento caía em silêncio na versão simples antiga e o antidobra não funcionava. Agora o botão avisa quando as ligações faltam ou são de outra versão.
