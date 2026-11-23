@@ -41,6 +41,9 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Medir o tempo de exportação antes/depois num modelo real.
 - [ ] Validar em visualizador independente e comparar propriedades.
 
+## Ideias em estudo
+- [ ] IFC vinculado: atualizar o modelo 3D da arquitetura no desenho quando o IFC mudar, mantendo o ponto em comum (docs/IFC-LINK.md; só viabilidade).
+
 ## Etapa 6 — Interface e distribuição
 - [ ] Interface de ponto de controle e exportação.
 - [ ] Relatório de cobertura, perdas e avisos.
