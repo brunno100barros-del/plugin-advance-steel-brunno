@@ -13,6 +13,19 @@ Como instalar o plugin **PASB (Coordix · BIMOFFICE)** no Advance Steel 2027 em 
 
 Você **não precisa** de Git, .NET SDK, Visual Studio nem do código-fonte.
 
+## Jeito mais rápido: instalador .exe
+
+1. Baixe **[PASB-Instalador-0.14.1.exe](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-Instalador-0.14.1.exe)**: é um arquivo só, com o plugin dentro.
+2. **Feche o Advance Steel.**
+3. Dê **dois cliques** no arquivo baixado e clique em **OK**.
+   - Se o Windows mostrar "O Windows protegeu o computador" (SmartScreen), clique em **Mais informações → Executar assim mesmo**. O instalador não é assinado digitalmente.
+   - Se o navegador avisar que o arquivo "não é baixado com frequência", escolha **Manter**.
+   - Se o Advance Steel estiver aberto, ele pede para fechar e clicar em **Repetir**.
+4. Pronto: siga para a seção **3. Primeiro uso**.
+
+Ele faz o mesmo que o `Instalar-PASB.cmd` do pacote .zip: instala só para o seu usuário, sem administrador, e substitui a versão anterior. Precisa do .NET 10, que o Advance Steel 2027 já instala.
+Para registrar as macros de ligação (Contraventamento em X, Sistema antidobra), use o pacote .zip (seção "Macros de ligação").
+
 ## 1. Baixar o pacote
 
 1. Abra o repositório: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno>

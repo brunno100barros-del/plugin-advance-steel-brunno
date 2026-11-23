@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Instalador em um arquivo só (PASB-Instalador-<versão>.exe): o pacote release\PASB-<versão>.zip vai embutido.
+    Depende do .NET 10 Desktop Runtime, que o Advance Steel 2027 já instala. Gerado por bundle\Build-Release.ps1:
+      dotnet publish src\Pasb.Installer -c Release -r win-x64 -p:PayloadZip=<caminho do zip>
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Pasb.Installer</RootNamespace>
+    <AssemblyName>PASB-Instalador</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PayloadZip)' != ''">
+    <EmbeddedResource Include="$(PayloadZip)" LogicalName="PASB.payload.zip" />
+  </ItemGroup>
+
+</Project>

@@ -44,6 +44,19 @@ Compress-Archive -Path $stage -DestinationPath $zip -CompressionLevel Optimal
 $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText("$zip.sha256", "$hash  $name.zip`n", (New-Object System.Text.UTF8Encoding($false)))
 
+# Instalador em um arquivo só, com o zip embutido (src\Pasb.Installer): release\PASB-Instalador-<versão>.exe.
+Get-ChildItem $outDir -Filter 'PASB-Instalador-*.exe*' | Remove-Item -Force
+$pub = Join-Path $root 'artifacts\installer'
+if (Test-Path $pub) { Remove-Item $pub -Recurse -Force }
+& dotnet publish (Join-Path $root 'src\Pasb.Installer') -c Release -r win-x64 "-p:PayloadZip=$zip" -o $pub -nologo -v q
+if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o instalador .exe." }
+$exe = Join-Path $outDir "PASB-Instalador-$version.exe"
+Copy-Item (Join-Path $pub 'PASB-Instalador.exe') $exe
+$exeHash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+[IO.File]::WriteAllText("$exe.sha256", "$exeHash  PASB-Instalador-$version.exe`n", (New-Object System.Text.UTF8Encoding($false)))
+
 Write-Host ""
 Write-Host "Pacote: $zip  ($([math]::Round((Get-Item $zip).Length / 1KB)) KB)"
 Write-Host "SHA-256: $hash"
+Write-Host "Instalador: $exe  ($([math]::Round((Get-Item $exe).Length / 1KB)) KB)"
+Write-Host "SHA-256: $exeHash"
