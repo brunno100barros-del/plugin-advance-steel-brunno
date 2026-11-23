@@ -23,13 +23,10 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 
 ## ⬇️ Instalar
 
-- **Baixar o instalador:** [PASB-0.13.0.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.13.0.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
+- **Baixar o instalador:** [PASB-0.13.1.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.13.1.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
 - **Guia de instalação:** [INSTALACAO.md](INSTALACAO.md)
 
 Não precisa compilar nem de administrador. Extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
-
-> [!NOTE]
-> O código já está na versão 0.13.1, com a exportação IFC mais rápida ([docs/EXPORT-PERFORMANCE.md](docs/EXPORT-PERFORMANCE.md)). O pacote 0.13.1 ainda não foi gerado: o instalador disponível continua sendo o 0.13.0.
 
 ## ✨ Visão geral
 
