@@ -156,7 +156,7 @@ Run("corpo real: chapa como IfcPolygonalFaceSet, com furo; sem extrusão paramé
 {
     Integrity(ifcB);
     True(ifcB.Contains("=IFCPOLYGONALFACESET(") && ifcB.Contains("=IFCCARTESIANPOINTLIST3D("), "face set");
-    True(ifcB.Contains("=IFCINDEXEDPOLYGONALFACEWITHVOIDS(("), "face com furo");
+    True(!ifcB.Contains("=IFCINDEXEDPOLYGONALFACEWITHVOIDS(") && Regex.Matches(ifcB, @"=IFCINDEXEDPOLYGONALFACE\(").Count > 12, "face com furo triangulada");
     True(ifcB.Contains("'Tessellation'"), "tipo de representação");
     True(!ifcB.Contains("=IFCARBITRARYCLOSEDPROFILEDEF("), "sem contorno extrudado");
     True(Regex.IsMatch(ifcB, @"\(0\.0956[23],0\.0476[23],0\.\)"), "vértice em metros, 5 casas");
@@ -200,6 +200,56 @@ Run("resumida: só o Pset PASB_Resumo, com nomes e unidades SI", () =>
     True(ifcS.Contains(@"'Marca da pe\X2\00E7\X0\a',$,IFCLABEL('p12')"), "marca");
     True(ifcS.Contains(@"'Di\X2\00E2\X0\metro',$,IFCLENGTHMEASURE(0.012)"), "diâmetro do parafuso");
     True(repS.PropertySets == 3, "um Pset por elemento");
+});
+
+// ------------------------------------------------------------------ faces com furos trianguladas (0.14.1)
+
+static double TriArea(double[][] P, int a, int b, int c)
+{
+    double[] u = { P[b][0] - P[a][0], P[b][1] - P[a][1], P[b][2] - P[a][2] }, v = { P[c][0] - P[a][0], P[c][1] - P[a][1], P[c][2] - P[a][2] };
+    double x = u[1] * v[2] - u[2] * v[1], y = u[2] * v[0] - u[0] * v[2], z = u[0] * v[1] - u[1] * v[0];
+    return Math.Sqrt(x * x + y * y + z * z) / 2;
+}
+// Quadrado 1×1 inclinado (plano x = z) com furo quadrado 0,5×0,5; holeSameWay: furo no mesmo sentido do contorno externo (como o AS às vezes entrega).
+static (double[][] P, int[][] face) SquareWithHole(bool holeSameWay)
+{
+    var P = new[]
+    {
+        new double[] { 0, 0, 0 }, new double[] { 1, 0, 1 }, new double[] { 1, 1, 1 }, new double[] { 0, 1, 0 },
+        new double[] { 0.25, 0.25, 0.25 }, new double[] { 0.75, 0.25, 0.75 }, new double[] { 0.75, 0.75, 0.75 }, new double[] { 0.25, 0.75, 0.25 },
+    };
+    int[] hole = holeSameWay ? new[] { 4, 5, 6, 7 } : new[] { 7, 6, 5, 4 };
+    return (P, new[] { new[] { 0, 1, 2, 3 }, hole });
+}
+foreach (bool same in new[] { false, true })
+    Run($"face com furo triangulada (furo {(same ? "no mesmo sentido" : "oposto")}): área = externa − furo, sentido preservado", () =>
+    {
+        var (P, face) = SquareWithHole(same);
+        List<int[]>? tris = BodyGeometry.TriangulateWithHoles(face, i => P[i]);
+        True(tris is { Count: >= 8 }, "triângulos");
+        double area = tris!.Sum(t => TriArea(P, t[0], t[1], t[2]));
+        double expected = Math.Sqrt(2) * (1 - 0.25);
+        True(Math.Abs(area - expected) < 1e-9, $"área {area} ≠ {expected}");
+        // Normal de cada triângulo no mesmo sentido do contorno externo (0,1,2,3 → normal (-1,0,1)/√2).
+        foreach (int[] t in tris!)
+        {
+            double[] a = P[t[0]], b = P[t[1]], c = P[t[2]];
+            double nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+            True(-nx + nz > 0, "sentido do triângulo igual ao do contorno externo");
+        }
+        True(tris.All(t => !t.Contains(-1)), "índices válidos");
+    });
+Run("chapa com furo no IFC: só faces simples (sem IfcIndexedPolygonalFaceWithVoids)", () =>
+    True(!ifcB.Contains("=IFCINDEXEDPOLYGONALFACEWITHVOIDS(") && ifcB.Contains("=IFCINDEXEDPOLYGONALFACE(("), "faces simples"));
+Run("sólido com faces para dentro é invertido (volume positivo)", () =>
+{
+    // Cubo unitário com todas as faces viradas para dentro.
+    double[][] P = { new double[] { 0, 0, 0 }, new double[] { 1, 0, 0 }, new double[] { 1, 1, 0 }, new double[] { 0, 1, 0 }, new double[] { 0, 0, 1 }, new double[] { 1, 0, 1 }, new double[] { 1, 1, 1 }, new double[] { 0, 1, 1 } };
+    int[][][] inward = { new[] { new[] { 0, 1, 2, 3 } }, new[] { new[] { 4, 7, 6, 5 } }, new[] { new[] { 0, 4, 5, 1 } }, new[] { new[] { 1, 5, 6, 2 } }, new[] { new[] { 2, 6, 7, 3 } }, new[] { new[] { 3, 7, 4, 0 } } };
+    List<int[][]> fixedFaces = BodyGeometry.Prepare(inward, i => P[i]);
+    True(fixedFaces[0][0].SequenceEqual(new[] { 3, 2, 1, 0 }), "base virada para baixo (para fora)");
+    List<int[][]> again = BodyGeometry.Prepare(fixedFaces, i => P[i]);
+    True(again[0][0].SequenceEqual(new[] { 3, 2, 1, 0 }), "já para fora: não inverte de novo");
 });
 
 Console.WriteLine($"{passed} passaram, {failed} falharam");

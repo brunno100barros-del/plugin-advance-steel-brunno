@@ -23,12 +23,14 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 
 ## ⬇️ Instalar
 
-- **Baixar o instalador:** [PASB-0.14.0.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.0.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
+- **Baixar o instalador:** [PASB-0.14.1.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.1.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
 - **Guia de instalação:** [INSTALACAO.md](INSTALACAO.md)
 
 Não precisa compilar nem de administrador. Extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
 
 > [!TIP]
+> **0.14.1:** chapas e outras peças com furos não aparecem mais "transparentes" no visualizador. As faces com furos são trianguladas no próprio IFC, e as regiões que o Advance Steel junta numa face só (ex.: várias cabeças de parafuso no mesmo plano) são separadas.
+>
 > **Novidades da 0.14.0**
 > - **Exportar IFC com o corpo real das peças:** cortes, recortes, furos, perfis do usuário (ex.: `Usr PERFIL U ENRIJECIDO`) e parafusos com cabeça, arruelas e porca. Antes, esses perfis saíam sem corpo e os parafusos eram só cilindros.
 > - **Exportação resumida (padrão):** só tipo de aço, perfil, comprimento, peso por metro, peso total, área de pintura e marca (equivalentes para chapas, parafusos e soldas). Nos dados de um modelo de 35 mil objetos, as propriedades caíram de 3,57 milhões para 135 mil. A opção **Completas** continua na janela.

@@ -57,8 +57,23 @@ Com os dados da exportação de 23/11/2026 do modelo do SESI (35.191 objetos), r
 
 **Pendente:** medir no Advance Steel o tempo total e o tamanho final do IFC com os corpos reais. A leitura dos 8.314 corpos levou cerca de 10 s no modelo aberto.
 
+## Correção na 0.14.1: chapas "transparentes"
+
+No visualizador, as chapas furadas apareciam vazadas: só as bordas ficavam visíveis. No IFC exportado pela 0.14.0 do SESI, 8.979 faces tinham contornos internos. Havia dois problemas:
+
+- Muitos visualizadores não preenchem `IfcIndexedPolygonalFaceWithVoids`. Em 1.365 furos de chapa, o contorno interno vinha no mesmo sentido do externo.
+- Os "contornos internos" do `getBrepInfo` nem sempre são furos. Em 713 faces eram **regiões separadas do mesmo plano**, como 5 cabeças de parafuso numa face só, 4 delas como "furos" de mesma área. O visualizador descartava essas regiões.
+
+Agora, para cada face:
+1. cada contorno é classificado por inclusão: é furo do menor contorno que o contém, ou então é uma região própria;
+2. cada região com furos é **triangulada** (recorte de orelhas, como o earcut) e gravada só com faces simples (`IfcIndexedPolygonalFace`), no sentido do contorno externo;
+3. se o volume com sinal do sólido der negativo (faces viradas para dentro, visto em 5 vigas W200), todos os contornos são invertidos.
+
+Conferência nas 8.979 faces do IFC do SESI: todas trianguladas, sem falha. A área triangulada bate com "área externa − furos" com diferença máxima de 0,03%, que vem do arredondamento das coordenadas em 0,01 mm.
+
 ## Limitações
 
 - Soldas continuam sem corpo (não são `AtomicElement`).
 - O `IfcPolygonalFaceSet` é do IFC4 (Addendum 2). Visualizadores muito antigos, só IFC2x3, não leem.
+- Faces com furos viram triângulos: o arquivo fica um pouco maior, e as arestas dos triângulos aparecem em vistas de arame.
 - A separação dos parafusos supõe que `BoltPattern.Normal` é o eixo dos parafusos (conferido nos 450 conjuntos). Quando não fecha, o conjunto sai inteiro, sem repetição.

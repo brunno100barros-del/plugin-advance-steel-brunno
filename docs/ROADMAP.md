@@ -44,7 +44,7 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 ## Etapa 6 — Interface e distribuição
 - [ ] Interface de ponto de controle e exportação.
 - [ ] Relatório de cobertura, perdas e avisos.
-- [x] Instalador 0.14.0 e guia de instalação.
+- [x] Instalador 0.14.1 e guia de instalação.
 - [ ] Logs e robustez da instalação.
 - [ ] Validação do instalador e do plugin em ambiente limpo com Advance Steel 2027.
 

@@ -48,7 +48,8 @@ internal sealed class BodyGeometry
         // Face → parafuso cujo eixo (ponto médio + normal) passa mais perto do centro do contorno externo.
         var facesOf = new List<int[][]>[n];
         for (int i = 0; i < n; i++) facesOf[i] = new List<int[][]>();
-        foreach (int[][] face in mesh.Faces)
+        // Regiões separadas antes da divisão: o Advance Steel junta numa "face" as cabeças de vários parafusos do mesmo plano.
+        foreach (int[][] face in Prepare(mesh.Faces, vi => new[] { mesh.Vertices[3 * vi], mesh.Vertices[3 * vi + 1], mesh.Vertices[3 * vi + 2] }))
         {
             double[] c = new double[3];
             foreach (int vi in face[0]) { c[0] += mesh.Vertices[3 * vi]; c[1] += mesh.Vertices[3 * vi + 1]; c[2] += mesh.Vertices[3 * vi + 2]; }
@@ -108,16 +109,181 @@ internal sealed class BodyGeometry
         }
         int list = _w.Add("IfcCartesianPointList3D", sb.Append(')').ToString());
         var faceIds = new List<int>(faces.Count);
+        foreach (int[][] face in Prepare(faces, point))
+        {
+            if (face.Length == 1) { faceIds.Add(_w.Add("IfcIndexedPolygonalFace", Indexes(face[0]))); continue; }
+            // Face com furos (ex.: chapa com furos de parafuso): triangulada aqui. Muitos visualizadores não preenchem
+            // IfcIndexedPolygonalFaceWithVoids, e a chapa aparecia "transparente" (só as bordas).
+            List<int[]>? tris = TriangulateWithHoles(face, point);
+            if (tris is null)
+                faceIds.Add(_w.Add("IfcIndexedPolygonalFaceWithVoids", Indexes(face[0]), "(" + string.Join(",", face.Skip(1).Select(Indexes)) + ")"));
+            else
+                foreach (int[] t in tris) faceIds.Add(_w.Add("IfcIndexedPolygonalFace", Indexes(t)));
+        }
+        return _w.Add("IfcPolygonalFaceSet", Ref(list), Bool(true), Refs(faceIds), Null);
+    }
+
+    /// <summary>
+    /// Contornos limpos e orientação conferida: se o volume com sinal do sólido der negativo (faces viradas para dentro,
+    /// visto em 5 vigas W200 do SESI), todos os contornos são invertidos, para as faces ficarem para fora (visualizadores escondem as de trás).
+    /// </summary>
+    internal static List<int[][]> Prepare(IReadOnlyList<int[][]> faces, Func<int, double[]> point)
+    {
+        var clean = new List<int[][]>(faces.Count);
         foreach (int[][] face in faces)
         {
             int[]? outer = Clean(face[0]);
             if (outer is null) continue;
-            var inner = face.Skip(1).Select(Clean).Where(l => l is not null).ToList();
-            faceIds.Add(inner.Count == 0
-                ? _w.Add("IfcIndexedPolygonalFace", Indexes(outer))
-                : _w.Add("IfcIndexedPolygonalFaceWithVoids", Indexes(outer), "(" + string.Join(",", inner.Select(l => Indexes(l!))) + ")"));
+            var loops = new List<int[]> { outer };
+            foreach (int[] l in face.Skip(1)) if (Clean(l) is { } c) loops.Add(c);
+            if (loops.Count == 1) clean.Add(loops.ToArray());
+            else clean.AddRange(Regions(loops, point));
         }
-        return _w.Add("IfcPolygonalFaceSet", Ref(list), Bool(true), Refs(faceIds), Null);
+        double vol = 0;
+        double[]? origin = null;
+        foreach (int[][] face in clean)
+            foreach (int[] loop in face)
+            {
+                origin ??= point(loop[0]);
+                double[] a = Vec.Sub(point(loop[0]), origin);
+                for (int i = 1; i < loop.Length - 1; i++)
+                    vol += Vec.Dot(a, Vec.Cross(Vec.Sub(point(loop[i]), origin), Vec.Sub(point(loop[i + 1]), origin)));
+            }
+        if (vol < 0)
+            foreach (int[][] face in clean) foreach (int[] loop in face) Array.Reverse(loop);
+        return clean;
+    }
+
+    /// <summary>
+    /// Separa uma face do Advance Steel em regiões com seus furos. Os "contornos internos" do getBrepInfo nem sempre são furos:
+    /// no SESI, 2.377 faces traziam regiões separadas do mesmo plano (ex.: 5 cabeças de parafuso numa "face" só, 4 delas como
+    /// contornos internos de mesma área). Classificação por inclusão: cada contorno é furo do menor contorno que o contém;
+    /// profundidade par = região, ímpar = furo. Regiões no mesmo sentido do contorno externo original; furos no sentido oposto.
+    /// </summary>
+    internal static List<int[][]> Regions(List<int[]> loops, Func<int, double[]> point)
+    {
+        double[] n = Newell(loops[0], point);
+        if (Vec.Length(n) < 1e-18) return new List<int[][]> { loops.ToArray() };
+        int drop = Math.Abs(n[0]) >= Math.Abs(n[1]) && Math.Abs(n[0]) >= Math.Abs(n[2]) ? 0 : Math.Abs(n[1]) >= Math.Abs(n[2]) ? 1 : 2;
+        int u = drop == 0 ? 1 : 0, v = drop == 2 ? 1 : 2;
+        double sign = Math.Sign(n[drop]);   // sentido do externo original no plano projetado
+
+        int m = loops.Count;
+        var poly = new double[m][];
+        var area = new double[m];
+        for (int k = 0; k < m; k++)
+        {
+            poly[k] = new double[loops[k].Length * 2];
+            for (int i = 0; i < loops[k].Length; i++) { double[] p = point(loops[k][i]); poly[k][2 * i] = p[u]; poly[k][2 * i + 1] = p[v]; }
+            area[k] = SignedArea2D(poly[k]);
+        }
+        // Do maior para o menor: o "pai" de um contorno é o menor contorno maior que o contém.
+        int[] order = Enumerable.Range(0, m).OrderByDescending(k => Math.Abs(area[k])).ToArray();
+        var parent = new int[m];
+        var depth = new int[m];
+        for (int oi = 0; oi < m; oi++)
+        {
+            int k = order[oi];
+            parent[k] = -1;
+            for (int oj = oi - 1; oj >= 0; oj--)
+            {
+                int j = order[oj];
+                if (Math.Abs(area[j]) <= Math.Abs(area[k]) * (1 + 1e-9)) continue;
+                // Contido: dois vértices do contorno dentro do candidato (um furo não toca o contorno externo).
+                if (Inside(poly[j], poly[k][0], poly[k][1]) && Inside(poly[j], poly[k][2], poly[k][3])) { parent[k] = j; break; }
+            }
+            depth[k] = parent[k] < 0 ? 0 : depth[parent[k]] + 1;
+        }
+        var result = new List<int[][]>();
+        for (int k = 0; k < m; k++)
+        {
+            if (depth[k] % 2 != 0) continue;
+            int[] outer = Oriented(loops[k], area[k], sign);
+            var face = new List<int[]> { outer };
+            for (int h = 0; h < m; h++)
+                if (parent[h] == k && depth[h] % 2 == 1) face.Add(Oriented(loops[h], area[h], -sign));
+            result.Add(face.ToArray());
+        }
+        return result;
+    }
+
+    private static int[] Oriented(int[] loop, double signedArea, double wantedSign)
+    {
+        if (Math.Sign(signedArea) == Math.Sign(wantedSign) || signedArea == 0) return loop;
+        var r = (int[])loop.Clone();
+        Array.Reverse(r);
+        return r;
+    }
+
+    private static double[] Newell(int[] loop, Func<int, double[]> point)
+    {
+        var n = new double[3];
+        for (int i = 0; i < loop.Length; i++)
+        {
+            double[] a = point(loop[i]), b = point(loop[(i + 1) % loop.Length]);
+            n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        return n;
+    }
+
+    /// <summary>Área com sinal no plano projetado (u, v): positiva no sentido anti-horário.</summary>
+    private static double SignedArea2D(double[] p)
+    {
+        double s = 0;
+        int c = p.Length / 2;
+        for (int i = 0, j = c - 1; i < c; j = i++) s += p[2 * j] * p[2 * i + 1] - p[2 * i] * p[2 * j + 1];
+        return s / 2;
+    }
+
+    private static bool Inside(double[] p, double x, double y)
+    {
+        bool inside = false;
+        int c = p.Length / 2;
+        for (int i = 0, j = c - 1; i < c; j = i++)
+        {
+            double xi = p[2 * i], yi = p[2 * i + 1], xj = p[2 * j], yj = p[2 * j + 1];
+            if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+    }
+
+    /// <summary>Triângulos (índices de vértice) de uma face plana com furos, no mesmo sentido do contorno externo; nulo se falhar.</summary>
+    internal static List<int[]>? TriangulateWithHoles(int[][] face, Func<int, double[]> point)
+    {
+        // Normal do contorno externo (Newell) e projeção no plano dos dois eixos restantes.
+        double[] n = new double[3];
+        int[] outer = face[0];
+        for (int i = 0; i < outer.Length; i++)
+        {
+            double[] a = point(outer[i]), b = point(outer[(i + 1) % outer.Length]);
+            n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        if (Vec.Length(n) < 1e-18) return null;
+        int drop = Math.Abs(n[0]) >= Math.Abs(n[1]) && Math.Abs(n[0]) >= Math.Abs(n[2]) ? 0 : Math.Abs(n[1]) >= Math.Abs(n[2]) ? 1 : 2;
+        int u = drop == 0 ? 1 : 0, v = drop == 2 ? 1 : 2;
+
+        var ids = new List<int>();
+        var data = new List<double>();
+        var holeStarts = new List<int>();
+        for (int k = 0; k < face.Length; k++)
+        {
+            if (k > 0) holeStarts.Add(ids.Count);
+            foreach (int vi in face[k]) { double[] p = point(vi); ids.Add(vi); data.Add(p[u]); data.Add(p[v]); }
+        }
+        List<int> t = Earcut.Triangulate(data.ToArray(), holeStarts);
+        if (t.Count < 3) return null;
+
+        var result = new List<int[]>(t.Count / 3);
+        for (int i = 0; i + 2 < t.Count; i += 3)
+        {
+            int a = ids[t[i]], b = ids[t[i + 1]], c = ids[t[i + 2]];
+            if (a == b || b == c || a == c) continue;
+            double[] pa = point(a);
+            double[] tn = Vec.Cross(Vec.Sub(point(b), pa), Vec.Sub(point(c), pa));
+            if (Vec.Length(tn) < 1e-18) continue;
+            result.Add(Vec.Dot(tn, n) >= 0 ? new[] { a, b, c } : new[] { a, c, b });
+        }
+        return result.Count > 0 ? result : null;
     }
 
     /// <summary>Contorno sem índices repetidos em sequência nem o primeiro repetido no fim; nulo se sobrar menos de 3.</summary>
