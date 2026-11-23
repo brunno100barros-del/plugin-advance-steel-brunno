@@ -41,7 +41,9 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 ## Etapa 6 — Interface e distribuição
 - [ ] Interface de ponto de controle e exportação.
 - [ ] Relatório de cobertura, perdas e avisos.
-- [ ] Logs, robustez, instalador e validação em ambiente limpo.
+- [x] Instalador 0.13.0 e guia de instalação (ramo `docs/sdk-2027-inventory`).
+- [ ] Logs e robustez da instalação.
+- [ ] Validação do instalador e do plugin em ambiente limpo com Advance Steel 2027.
 
 ## Fora do escopo
 - Não alterar preventivamente o repositório original AdvancedSteelMCP.

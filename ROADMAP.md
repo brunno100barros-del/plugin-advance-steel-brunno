@@ -57,8 +57,9 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Criar interface de ponto de controle e parâmetros.
 - [ ] Exibir validações e relatório de exportação.
 - [ ] Tratar erros sem bloquear ou corromper o modelo.
-- [ ] Preparar instalação, logs e documentação.
-- [ ] Validar em ambiente limpo com Advance Steel 2027.
+- [x] Preparar instalação e documentação: instalador 0.13.0 e guia INSTALACAO.md (ramo `docs/sdk-2027-inventory`).
+- [ ] Logs e robustez da instalação.
+- [ ] Validar instalador e plugin em ambiente limpo com Advance Steel 2027.
 
 ## Fora do escopo
 

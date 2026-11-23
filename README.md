@@ -12,6 +12,7 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 ![IFC](https://img.shields.io/badge/IFC-4-2E7D32?style=for-the-badge)
 ![SIRGAS](https://img.shields.io/badge/SIRGAS%202000-UTM-009C3B?style=for-the-badge)
 
+[Instalar](#-instalar) •
 [Visão geral](#-visão-geral) •
 [Arquitetura](#-arquitetura) •
 [Roadmap](#-roadmap) •
@@ -20,6 +21,15 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 </div>
 
 ---
+
+## ⬇️ Instalar
+
+Versão atual: **0.13.0** (pacote ainda não testado dentro do Advance Steel 2027).
+
+- **Baixar o instalador:** [PASB-0.13.0.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/docs/sdk-2027-inventory/release/PASB-0.13.0.zip)
+- **Guia de instalação:** [INSTALACAO.md](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/blob/docs/sdk-2027-inventory/INSTALACAO.md)
+
+Não precisa compilar nem de administrador. Extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
 
 ## ✨ Visão geral
 
@@ -74,17 +84,19 @@ Propriedades sem equivalente IFC padrão vão para **Property Sets customizados*
 | 2 | Integração com Advance Steel + MCP | 🟡 Revisão estática feita, validação local pendente |
 | 3 | Modelo neutro e preservação integral | 🟡 Contrato definido, implementação pendente |
 | 4 | Georreferenciamento SIRGAS 2000 / UTM | ⚪ Planejada |
-| 5 | Exportador IFC4 | ⚪ Planejada |
+| 5 | Exportador IFC4 | 🟡 Em andamento (exportação e importação de IFC já no pacote 0.13.0, validação pendente) |
+| 6 | Interface, robustez e distribuição | 🟡 Instalador 0.13.0 pronto; validação em ambiente limpo pendente |
 
-Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADMAP.md).
+Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADMAP.md) e [ROADMAP.md](ROADMAP.md).
 
 > [!NOTE]
-> O projeto está em fase de especificação. Ainda não há código executável: nada é dado como "pronto" antes de ser validado em um modelo real do Advance Steel 2027.
+> Nada é dado como "pronto" antes de ser validado em um modelo real do Advance Steel 2027. O pacote 0.13.0 ainda não foi testado dentro do Advance Steel.
 
 ## 📚 Documentação
 
 | Documento | Conteúdo |
 |---|---|
+| [INSTALACAO.md](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/blob/docs/sdk-2027-inventory/INSTALACAO.md) | Guia de instalação, atualização, conector IA e remoção |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Módulos, fluxo de dados e responsabilidades |
 | [MCP-INTEGRATION.md](MCP-INTEGRATION.md) | Diretrizes de integração com o AdvancedSteelMCP |
 | [MCP-REVIEW.md](MCP-REVIEW.md) | Auditoria do código-fonte do MCP |
