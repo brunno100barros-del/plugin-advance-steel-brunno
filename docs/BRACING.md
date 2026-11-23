@@ -58,3 +58,12 @@ Sem o registro, o botão usa a versão simples (peças soltas, sem caixa de liga
 - Orientação da cantoneira (agora ajustável na aba 6, f1).
 - Lado das chapas em relação ao plano (`Portioning`).
 - Nome do conjunto de parafuso (`NaW`) conforme o catálogo instalado.
+
+## Ligação nativa não registrada (0.14.2)
+
+O botão usa a ligação nativa (caixa cinza, duplo clique para editar) quando `PasbJoints.dll` está na pasta do Advance Steel e é a mesma desta versão do plugin. Até a 0.14.1, sem ela, o comando caía **em silêncio** na versão simples antiga (sem caixa de ligação). Agora:
+
+- **Não registrada:** aparece um aviso explicando como registrar, e a versão simples só é usada se você clicar em **Sim**.
+- **De outra versão:** aparece um aviso para registrar de novo, e a ligação nativa registrada é usada.
+
+Os instaladores da 0.14.2 registram as ligações sozinhos (ver INSTALACAO.md, "Macros de ligação").

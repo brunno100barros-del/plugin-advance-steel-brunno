@@ -11,6 +11,9 @@ namespace Pasb.Installer;
 /// - Recusa instalar com o Advance Steel aberto (oferece tentar de novo).
 /// - Se o servidor do Conector IA (Pasb.Mcp) estiver em uso, mantém Contents\Mcp, como o instalador em PowerShell.
 /// - Não altera nenhum outro plugin nem configuração do AutoCAD.
+/// - Ligações nativas (Contraventamento em X e Sistema antidobra): se não estiverem registradas ou forem de outra versão,
+///   oferece registrar na hora, rodando o Register-NativeJoints.ps1 do bundle (o Windows pede administrador só para copiar a DLL
+///   para a pasta do Advance Steel; antes de alterar os bancos, o script faz backup deles).
 /// </summary>
 internal static class Program
 {
@@ -49,7 +52,9 @@ internal static class Program
             bool mcpInUse = Process.GetProcessesByName("Pasb.Mcp").Length > 0 && File.Exists(Path.Combine(target, "Contents", "Mcp", "Pasb.Mcp.exe"));
             Install(zip, prefix, target, keepMcp: mcpInUse);
 
-            string done = $"PASB {version} instalado.\n\n" +
+            string joints = RegisterJointsIfNeeded(target);
+
+            string done = $"PASB {version} instalado.\n\n" + joints +
                           "Abra o Advance Steel 2027. No aviso de segurança do PASB, clique em \"Sempre carregar\".\n" +
                           "A aba PASB aparece na faixa de opções logo depois que o programa termina de abrir." +
                           (mcpInUse ? "\n\nO servidor do Conector IA estava em uso pelo Claude Code e foi mantido. Feche o Claude Code e instale de novo para atualizá-lo." : "");
@@ -100,6 +105,54 @@ internal static class Program
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             e.ExtractToFile(dest, overwrite: true);
         }
+    }
+
+    // ------------------------------------------------------------------ ligações nativas
+
+    private const string AdvsFolder = @"C:\Program Files\Autodesk\AutoCAD 2027\ADVS";
+
+    /// <summary>
+    /// Registra as ligações nativas quando faltam ou estão desatualizadas (DLL na pasta do Advance Steel diferente da do plugin).
+    /// Sem elas, o botão Contraventamento em X usa a versão simples (antiga) e o Sistema antidobra não funciona.
+    /// Devolve uma linha para a mensagem final.
+    /// </summary>
+    private static string RegisterJointsIfNeeded(string target)
+    {
+        string bundled = Path.Combine(target, "Contents", "Joints", "PasbJoints.dll");
+        string script = Path.Combine(target, "Contents", "Joints", "Register-NativeJoints.ps1");
+        if (!File.Exists(bundled) || !File.Exists(script) || !Directory.Exists(AdvsFolder)) return "";
+        string installed = Path.Combine(AdvsFolder, "PasbJoints.dll");
+        bool missing = !File.Exists(installed);
+        if (!missing && SameFile(installed, bundled)) return "Ligações nativas (Contraventamento em X e Sistema antidobra): já registradas.\n\n";
+
+        string q = (missing
+                ? "As ligações nativas do PASB (Contraventamento em X estilo steelXbim e Sistema antidobra) não estão registradas neste computador."
+                : "As ligações nativas do PASB registradas no Advance Steel são de outra versão.") +
+            "\n\nRegistrar agora? O Windows vai pedir permissão de administrador para copiar a PasbJoints.dll para a pasta do Advance Steel; " +
+            "antes de alterar os bancos do Advance Steel, é feito backup deles em %LOCALAPPDATA%\\PASB\\backup-bancos." +
+            "\n\nSem registrar, o Contraventamento em X usa a versão simples (antiga) e o Sistema antidobra não funciona.";
+        if (MessageBox.Show(q, Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            return "Ligações nativas NÃO registradas: para registrar depois, rode este instalador de novo.\n\n";
+
+        var psi = new ProcessStartInfo("powershell.exe") { UseShellExecute = false };
+        foreach (string a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                     $"try {{ & '{script.Replace("'", "''")}'; $c = 0 }} catch {{ Write-Host $_ -ForegroundColor Red; $c = 1 }}; Write-Host ''; Read-Host 'Tecle ENTER para continuar' | Out-Null; exit $c" })
+            psi.ArgumentList.Add(a);
+        using Process? p = Process.Start(psi);
+        p?.WaitForExit();
+        bool ok = File.Exists(installed) && SameFile(installed, bundled) && p?.ExitCode == 0;
+        return ok
+            ? "Ligações nativas (Contraventamento em X e Sistema antidobra): registradas.\n\n"
+            : "ATENÇÃO: o registro das ligações nativas não terminou (veja a janela do PowerShell). Rode este instalador de novo.\n\n";
+    }
+
+    private static bool SameFile(string a, string b)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        byte[] ha, hb;
+        using (var fa = File.OpenRead(a)) ha = sha.ComputeHash(fa);
+        using (var fb = File.OpenRead(b)) hb = sha.ComputeHash(fb);
+        return ha.AsSpan().SequenceEqual(hb);
     }
 
     private static string ReadVersion(ZipArchiveEntry e)

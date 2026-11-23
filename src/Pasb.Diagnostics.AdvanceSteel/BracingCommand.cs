@@ -51,12 +51,20 @@ public sealed class BracingCommand
         {
             if (!CheckUnits(doc, ed)) return;
             // Macro nativa registrada (Registrar-Macros-PASB.cmd): ligação de verdade, com caixa cinza e duplo clique.
-            if (NativeJointInstalled())
+            JointsMenuCommand.JointsState st = JointsMenuCommand.NativeJointsState();
+            if (st != JointsMenuCommand.JointsState.Missing)
             {
+                if (st == JointsMenuCommand.JointsState.Outdated)
+                    MessageBox.Show(JointsMenuCommand.NativeJointsWarning(st), "PASB — Contraventamento em X", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 JointsMenuCommand.StartJoint(doc, "PasbContraventamento");
                 return;
             }
-            ed.WriteMessage("\nPASB: a macro nativa não está registrada (rode Registrar-Macros-PASB.cmd com o Advance Steel fechado). Usando a versão simples, sem caixa de ligação.\n");
+            // Sem a ligação nativa: avisa e só usa a versão simples (antiga, sem caixa de ligação) se o usuário pedir.
+            ed.WriteMessage("\nPASB: as ligações nativas do PASB não estão registradas neste computador.\n");
+            if (MessageBox.Show(JointsMenuCommand.NativeJointsWarning(st) + "\n\nContinuar agora com a versão simples (antiga, sem caixa de ligação e sem edição por duplo clique)?",
+                    "PASB — Contraventamento em X", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                return;
+            ed.WriteMessage("\nPASB: usando a versão simples, sem caixa de ligação.\n");
             PromptPointResult r1 = ed.GetPoint(new PromptPointOptions("\nPASB: ponto 1 (canto do contraventamento): "));
             if (r1.Status != PromptStatus.OK) return;
             PromptPointResult r2 = ed.GetCorner(new PromptCornerOptions("\nPASB: ponto 2 (canto oposto): ", r1.Value));
@@ -487,16 +495,6 @@ public sealed class BracingCommand
 
     // ------------------------------------------------------------------ utilitários
 
-    /// <summary>PasbJoints.dll está na pasta do Advance Steel (onde ele carrega as ligações registradas).</summary>
-    private static bool NativeJointInstalled()
-    {
-        try
-        {
-            string advs = System.IO.Path.GetDirectoryName(typeof(Autodesk.AdvanceSteel.CADAccess.FilerObject).Assembly.Location) ?? "";
-            return System.IO.File.Exists(System.IO.Path.Combine(advs, "PasbJoints.dll"));
-        }
-        catch (System.Exception) { return false; }
-    }
 
     private static bool CheckUnits(AcDoc doc, Editor ed)
     {

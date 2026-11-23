@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Instala o plugin PASB (Coordix · BIMOFFICE) no Advance Steel 2027 a partir deste pacote, sem compilar nada.
 
@@ -42,6 +42,26 @@ else {
     Copy-Item $source $target -Recurse
 }
 Get-ChildItem $target -Recurse -File | ForEach-Object { Unblock-File -LiteralPath $_.FullName -ErrorAction SilentlyContinue }
+
+# Ligações nativas (Contraventamento em X e Sistema antidobra): sem elas, o contraventamento usa a versão simples (antiga)
+# e o antidobra não funciona. Registra quando faltam ou são de outra versão (pede administrador só para copiar a DLL).
+$advs = 'C:\Program Files\Autodesk\AutoCAD 2027\ADVS'
+$jointsDll = Join-Path $target 'Contents\Joints\PasbJoints.dll'
+$jointsPs1 = Join-Path $target 'Contents\Joints\Register-NativeJoints.ps1'
+if ((Test-Path $advs) -and (Test-Path $jointsDll) -and (Test-Path $jointsPs1)) {
+    $inAdvs = Join-Path $advs 'PasbJoints.dll'
+    $current = (Test-Path $inAdvs) -and ((Get-FileHash $inAdvs).Hash -eq (Get-FileHash $jointsDll).Hash)
+    if ($current) { Write-Host 'Ligações nativas (Contraventamento em X e Sistema antidobra): já registradas.' }
+    else {
+        Write-Host ''
+        Write-Host 'Registrando as ligações nativas (Contraventamento em X e Sistema antidobra)...'
+        try { & $jointsPs1 }
+        catch {
+            Write-Host "ATENÇÃO: as ligações nativas não foram registradas: $($_.Exception.Message)"
+            Write-Host 'Rode Registrar-Macros-PASB.cmd depois, com o Advance Steel fechado.'
+        }
+    }
+}
 
 Write-Host ""
 Write-Host "Instalado em: $target"

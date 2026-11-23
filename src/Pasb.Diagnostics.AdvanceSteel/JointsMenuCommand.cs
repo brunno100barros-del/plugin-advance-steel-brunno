@@ -37,11 +37,15 @@ public sealed class JointsMenuCommand
             ed.WriteMessage($"\nPASB: o sistema antidobra usa medidas em milímetros, mas o desenho está em \"{doc.Database.Insunits}\".\n");
             return;
         }
-        if (!NativeJointsInstalled())
+        JointsState st = NativeJointsState();
+        if (st == JointsState.Missing)
         {
-            ed.WriteMessage("\nPASB: a ligação antidobra precisa das macros nativas do PASB. Feche o Advance Steel e rode Registrar-Macros-PASB.cmd.\n");
+            ed.WriteMessage("\nPASB: a ligação antidobra precisa das ligações nativas do PASB, que não estão registradas neste computador.\n");
+            MessageBox.Show(NativeJointsWarning(st), "PASB — Sistema antidobra", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+        if (st == JointsState.Outdated)
+            MessageBox.Show(NativeJointsWarning(st), "PASB — Sistema antidobra", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         StartJoint(doc, "PasbAntidobra");
     }
 
@@ -100,15 +104,48 @@ public sealed class JointsMenuCommand
     }
 
     /// <summary>PasbJoints.dll está na pasta do Advance Steel (onde ele carrega as ligações registradas).</summary>
-    internal static bool NativeJointsInstalled()
+    internal static bool NativeJointsInstalled() => NativeJointsState() != JointsState.Missing;
+
+    internal enum JointsState { Missing, Outdated, Ok }
+
+    /// <summary>
+    /// Missing: PasbJoints.dll não está na pasta do Advance Steel (macros nunca registradas neste computador).
+    /// Outdated: está, mas é diferente da DLL desta versão do plugin (Contents\Joints): o Advance Steel usa a antiga.
+    /// </summary>
+    internal static JointsState NativeJointsState()
     {
         try
         {
             string advs = System.IO.Path.GetDirectoryName(typeof(Autodesk.AdvanceSteel.CADAccess.FilerObject).Assembly.Location) ?? "";
-            return System.IO.File.Exists(System.IO.Path.Combine(advs, "PasbJoints.dll"));
+            string installed = System.IO.Path.Combine(advs, "PasbJoints.dll");
+            if (!System.IO.File.Exists(installed)) return JointsState.Missing;
+            string bundled = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(JointsMenuCommand).Assembly.Location) ?? "", "Joints", "PasbJoints.dll");
+            if (!System.IO.File.Exists(bundled)) return JointsState.Ok;
+            return SameFile(installed, bundled) ? JointsState.Ok : JointsState.Outdated;
         }
-        catch (System.Exception) { return false; }
+        catch (System.Exception) { return JointsState.Missing; }
     }
+
+    private static bool SameFile(string a, string b)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        using var fa = System.IO.File.OpenRead(a);
+        using var fb = System.IO.File.OpenRead(b);
+        return sha.ComputeHash(fa).AsSpan().SequenceEqual(System.Security.Cryptography.SHA256.Create().ComputeHash(fb));
+    }
+
+    /// <summary>Texto do aviso quando as ligações nativas faltam ou estão desatualizadas (null = tudo certo).</summary>
+    internal static string? NativeJointsWarning(JointsState st) => st switch
+    {
+        JointsState.Missing =>
+            "As ligações nativas do PASB (Contraventamento em X estilo steelXbim e Sistema antidobra) não estão registradas neste computador.\n\n" +
+            "Para registrar: feche o Advance Steel e rode o instalador do PASB de novo (ele registra as ligações; o Windows pede permissão de administrador), " +
+            "ou dê dois cliques em Registrar-Macros-PASB.cmd, no pacote .zip.",
+        JointsState.Outdated =>
+            "As ligações nativas do PASB registradas no Advance Steel são de outra versão do plugin: o Advance Steel vai usar a versão antiga.\n\n" +
+            "Para atualizar: feche o Advance Steel e rode o instalador do PASB de novo (ou Registrar-Macros-PASB.cmd).",
+        _ => null,
+    };
 
     private sealed class JointsMenuForm : Form
     {

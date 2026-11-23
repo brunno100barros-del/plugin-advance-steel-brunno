@@ -156,3 +156,7 @@ Ligação nativa **"PASB - Sistema antidobra"** (`PasbAntidobra`, `Pasb.Joints.S
 - suporte em chapa (aba Cantoneira de ligação, itens 10 a 13);
 - furo oblongo nos parafusos e furos na rígida na horizontal;
 - biblioteca de porcas/arruelas em .dwg (usa os blocos PASB).
+
+## Ligação nativa não registrada (0.14.2)
+
+Sem `PasbJoints.dll` na pasta do Advance Steel, o Sistema antidobra não funciona: até a 0.14.1 só aparecia uma linha na linha de comando. Agora aparece um aviso com o passo a passo para registrar. Os instaladores da 0.14.2 registram as ligações sozinhos (ver INSTALACAO.md, "Macros de ligação").
