@@ -32,16 +32,65 @@ internal static class ApprovedMethods
         "AtomicElement.GetModelerBodyList(kNormal)",
     };
 
-    public static void Read(FilerObject o, RecordBuilder b, ReadProfile profile = ReadProfile.Diagnostic)
+    public static void Read(FilerObject o, RecordBuilder b, ReadProfile profile = ReadProfile.Diagnostic, bool readBody = false)
     {
-        if (o is ConstructionElement ce) AttributeStatus(ce, b);
-        if (o is AtomicElement ae) Atomic(ae, b, profile);
+        bool summary = profile == ReadProfile.ExportSummary;
+        if (o is ConstructionElement ce && !summary) AttributeStatus(ce, b);
+        if (o is AtomicElement ae)
+        {
+            if (summary) AtomicSummary(ae, b); else Atomic(ae, b, profile);
+            // Vigas compostas (ex.: 2U): as componentes existem no modelo como vigas próprias (conferido no modelo do SESI:
+            // volume da composta = soma das duas componentes). O corpo da composta duplicaria a geometria; fica de fora.
+            if (readBody && !ae.GetType().Name.StartsWith("Compound", StringComparison.Ordinal)) Body(ae, b);
+        }
         if (o is Beam beam) BeamMethods(beam, b);
         if (o is PlateBase plate) PlateMethods(plate, b);
-        if (o is BoltPattern bolts) BoltMethods(bolts, b);
-        if (o is WeldPattern weld) WeldMethods(weld, b);
+        if (o is BoltPattern bolts) BoltMethods(bolts, b, summary);
+        if (o is WeldPattern weld) WeldMethods(weld, b, summary);
+        if (summary) return;
         if (o is FeatureObject feat) M(b, "FeatureObject", "GetOwner", null, typeof(FilerObject), () => feat.GetOwner());
         if (o is UserAutoConstructionObject joint) JointMethods(joint, b);
+    }
+
+    // ------------------------------------------------------------------ Corpo sólido real (exportação IFC)
+
+    /// <summary>Nome do registro do corpo sólido: "AtomicElement.GetModeler(kDetailed)".</summary>
+    public const string BodyContextName = nameof(BodyContext.eBodyContext.kDetailed);
+
+    /// <summary>
+    /// Corpo sólido do Advance Steel, como ele desenha a peça: inclui cortes, recortes, furos, perfis do usuário e compostos,
+    /// cabeça, arruelas e porca dos parafusos. kDetailed (as chapas em kNormal saem sem furos).
+    /// Formato: {"v":[x0,y0,z0,x1,...] (mm, coordenadas globais, 2 casas), "f":[[[externo...],[furo...],...],...] (índices em v/3)}.
+    /// Só leitura: GetModeler + getBrepInfo (conferido no Portal e no modelo do SESI: ~10 s para 8.300 peças, sem falhas).
+    /// </summary>
+    private static void Body(AtomicElement ae, RecordBuilder b) =>
+        M(b, "AtomicElement", "GetModeler", BodyContextName, typeof(JsonObject), () =>
+        {
+            using ModelerBody? body = ae.GetModeler(BodyContext.eBodyContext.kDetailed);
+            if (body is null) return null;
+            body.getBrepInfo(out Point3d[] vertices, out ModelerBody.FaceInfo[] faces);
+            if (vertices is null || faces is null || vertices.Length == 0 || faces.Length == 0) return null;
+            var v = new JsonArray();
+            foreach (Point3d p in vertices) { v.Add(Round(p.x)); v.Add(Round(p.y)); v.Add(Round(p.z)); }
+            var f = new JsonArray();
+            foreach (ModelerBody.FaceInfo face in faces)
+            {
+                if (face.OuterContour is not { Length: >= 3 } outer) continue;
+                var loops = new JsonArray { Loop(outer) };
+                foreach (int[] inner in face.InnerContours ?? Array.Empty<int[]>())
+                    if (inner is { Length: >= 3 }) loops.Add(Loop(inner));
+                f.Add(loops);
+            }
+            return new JsonObject { ["v"] = v, ["f"] = f };
+        });
+
+    private static JsonNode Round(double d) => JsonValue.Create(Math.Round(d, 2));
+
+    private static JsonArray Loop(int[] idx)
+    {
+        var a = new JsonArray();
+        foreach (int i in idx) a.Add(i);
+        return a;
     }
 
     private static void M(RecordBuilder b, string declaring, string name, string? arg, Type t, Func<object?> f) =>
@@ -61,6 +110,13 @@ internal static class ApprovedMethods
     }
 
     // ------------------------------------------------------------------ AtomicElement
+
+    /// <summary>Resumida: só as marcas (posição de peça e de conjunto).</summary>
+    private static void AtomicSummary(AtomicElement ae, RecordBuilder b)
+    {
+        M(b, "AtomicElement", "GetSinglePartPositionNumber", null, typeof(string), () => ae.GetSinglePartPositionNumber());
+        M(b, "AtomicElement", "GetMainPartPositionNumber", null, typeof(string), () => ae.GetMainPartPositionNumber());
+    }
 
     private static void Atomic(AtomicElement ae, RecordBuilder b, ReadProfile profile)
     {
@@ -208,14 +264,14 @@ internal static class ApprovedMethods
 
     // ------------------------------------------------------------------ Bolts / anchors
 
-    private static void BoltMethods(BoltPattern bp, RecordBuilder b)
+    private static void BoltMethods(BoltPattern bp, RecordBuilder b, bool summary)
     {
         M(b, "BoltPattern", "GetMidpoints", null, typeof(Point3d[]), () =>
         {
             bp.GetMidpoints(out Point3d[] pts);
             return pts;
         });
-        M(b, "BoltPattern", "GetHoles", null, typeof(object), () =>
+        if (!summary) M(b, "BoltPattern", "GetHoles", null, typeof(object), () =>
         {
             bp.GetHoles(out Autodesk.AdvanceSteel.Connection.ConnectionHoleFeature[] holes);
             return holes;
@@ -227,7 +283,7 @@ internal static class ApprovedMethods
 
     // ------------------------------------------------------------------ Welds
 
-    private static void WeldMethods(WeldPattern w, RecordBuilder b)
+    private static void WeldMethods(WeldPattern w, RecordBuilder b, bool summary)
     {
         const string d = "WeldPattern";
         foreach (WeldPattern.eSeamPosition pos in new[] { WeldPattern.eSeamPosition.kUpper, WeldPattern.eSeamPosition.kLower })
@@ -236,10 +292,12 @@ internal static class ApprovedMethods
             string arg = s.ToString();
             M(b, d, "GetWeldType", arg, typeof(WeldPattern.eWeldType), () => w.GetWeldType(s));
             M(b, d, "GetSeamThickness", arg, typeof(double), () => w.GetSeamThickness(s));
+            if (summary) continue;
             M(b, d, "GetFaceShape", arg, typeof(object), () => w.GetFaceShape(s));
             M(b, d, "GetSeamExecuting", arg, typeof(object), () => w.GetSeamExecuting(s));
         }
         M(b, d, "GetCenterPoint", null, typeof(Point3d), () => w.GetCenterPoint());
+        if (summary) return;
         M(b, d, "IsCombiWelding", null, typeof(int), () => w.IsCombiWelding());
         M(b, d, "IsLowerWeldingChangeable", null, typeof(int), () => w.IsLowerWeldingChangeable());
     }

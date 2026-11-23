@@ -15,6 +15,8 @@ public sealed class NeutralGeometry
     public string Kind { get; set; } = "";
     public List<double[]> Points { get; } = new();
     public double[]? Normal { get; set; }
+    /// <summary>Direção X de referência (parafusos: BoltPattern.XDirection), para orientar a geometria repetida.</summary>
+    public double[]? XDirection { get; set; }
     /// <summary>Matriz 4×4 (linhas) do sistema de coordenadas do elemento, quando disponível.</summary>
     public double[][]? CoordinateSystem { get; set; }
     /// <summary>Espessura (chapa), diâmetro (parafuso) etc., em unidades do desenho.</summary>
@@ -25,6 +27,53 @@ public sealed class NeutralGeometry
     /// <summary>Propriedades de origem usadas, para rastreabilidade.</summary>
     public List<string> SourceKeys { get; } = new();
     public List<string> Limitations { get; } = new();
+    /// <summary>
+    /// Corpo sólido real do Advance Steel (AtomicElement.GetModeler(kDetailed)), em unidades do desenho e coordenadas globais.
+    /// Quando existe, o IFC usa este corpo (cortes, furos, perfis do usuário, cabeça/arruela/porca dos parafusos).
+    /// Fora do JSON neutro e do Conector IA (volume grande; só serve para o IFC).
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public NeutralMesh? Body { get; set; }
+}
+
+/// <summary>Malha poligonal fechada: vértices (x, y, z em sequência) e faces com contorno externo e furos (índices base 0).</summary>
+public sealed class NeutralMesh
+{
+    public NeutralMesh(double[] vertices, List<int[][]> faces) { Vertices = vertices; Faces = faces; }
+
+    public double[] Vertices { get; }
+    /// <summary>Cada face: [0] = contorno externo, [1..] = contornos internos (furos).</summary>
+    public List<int[][]> Faces { get; }
+    public int VertexCount => Vertices.Length / 3;
+
+    /// <summary>Nome do registro lido pelo plugin (ApprovedMethods.Body).</summary>
+    public const string SourceKey = "AtomicElement.GetModeler(kDetailed)";
+
+    /// <summary>Converte {"v":[...],"f":[[[...],[...]],...]}; nulo se o formato não fechar (índice fora, laço com menos de 3 pontos).</summary>
+    public static NeutralMesh? FromJson(JsonNode? node)
+    {
+        if (node is not JsonObject o || o["v"] is not JsonArray v || o["f"] is not JsonArray f || v.Count < 9 || v.Count % 3 != 0) return null;
+        var vertices = new double[v.Count];
+        for (int i = 0; i < v.Count; i++)
+            if (v[i] is not JsonValue jv || !jv.TryGetValue(out vertices[i]) || !double.IsFinite(vertices[i])) return null;
+        int n = v.Count / 3;
+        var faces = new List<int[][]>(f.Count);
+        foreach (JsonNode? face in f)
+        {
+            if (face is not JsonArray loops || loops.Count == 0) continue;
+            var parsed = new List<int[]>(loops.Count);
+            foreach (JsonNode? loop in loops)
+            {
+                if (loop is not JsonArray idx || idx.Count < 3) { if (parsed.Count == 0) break; continue; }
+                var a = new int[idx.Count];
+                for (int i = 0; i < a.Length; i++)
+                    if (idx[i] is not JsonValue iv || !iv.TryGetValue(out a[i]) || a[i] < 0 || a[i] >= n) return null;
+                parsed.Add(a);
+            }
+            if (parsed.Count > 0) faces.Add(parsed.ToArray());
+        }
+        return faces.Count >= 4 ? new NeutralMesh(vertices, faces) : null;
+    }
 }
 
 public static class GeometryExtractor
@@ -44,6 +93,13 @@ public static class GeometryExtractor
             _ => null,
         };
         g ??= Extents(p);
+        NeutralMesh? mesh = p.TryGetValue(NeutralMesh.SourceKey, out NeutralProperty? bp) ? NeutralMesh.FromJson(bp.RawValue) : null;
+        if (mesh is not null)
+        {
+            g ??= new NeutralGeometry { Kind = "body" };
+            g.Body = mesh;
+            g.SourceKeys.Add(NeutralMesh.SourceKey);
+        }
         if (g is null) return null;
         g.ModelUnitToMeters = unitToMeters;
         if (Matrix(p, "ActiveConstructionElement.CS") is { } cs && g.CoordinateSystem is null)
@@ -119,6 +175,7 @@ public static class GeometryExtractor
         foreach (JsonNode? v in arr) if (ToVector(v) is { } pt) g.Points.Add(pt);
         g.SourceKeys.Add(m.Key);
         if (Vector(p, "BoltPattern.Normal") is { } n) { g.Normal = n; g.SourceKeys.Add("BoltPattern.Normal"); }
+        if (Vector(p, "BoltPattern.XDirection") is { } xd) { g.XDirection = xd; g.SourceKeys.Add("BoltPattern.XDirection"); }
         Num(g, p, "ScrewBoltPattern.ScrewDiameter", "diameter");
         Num(g, p, "ScrewBoltPattern.ScrewLength", "length");
         Num(g, p, "ScrewBoltPattern.BoltHeadDiameter", "headDiameter");

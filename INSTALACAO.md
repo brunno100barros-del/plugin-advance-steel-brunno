@@ -16,15 +16,15 @@ Você **não precisa** de Git, .NET SDK, Visual Studio nem do código-fonte.
 ## 1. Baixar o pacote
 
 1. Abra o repositório: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno>
-2. Entre na pasta **`release`** e clique no arquivo **`PASB-<versão>.zip`** (por exemplo, `PASB-0.13.1.zip`).
+2. Entre na pasta **`release`** e clique no arquivo **`PASB-<versão>.zip`** (por exemplo, `PASB-0.14.0.zip`).
 3. Clique em **Download** (ícone de seta para baixo, à direita, ou em "Download raw file").
 
-> Link direto da versão atual: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.13.1.zip>
+> Link direto da versão atual: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.0.zip>
 
 **Conferir o download (opcional):** o arquivo `PASB-<versão>.zip.sha256`, ao lado do zip, traz o código de verificação. No PowerShell:
 
 ```powershell
-Get-FileHash "$env:USERPROFILE\Downloads\PASB-0.13.1.zip" -Algorithm SHA256
+Get-FileHash "$env:USERPROFILE\Downloads\PASB-0.14.0.zip" -Algorithm SHA256
 ```
 
 O resultado deve ser igual ao do arquivo `.sha256`, sem diferenciar maiúsculas de minúsculas.
@@ -34,7 +34,7 @@ O resultado deve ser igual ao do arquivo `.sha256`, sem diferenciar maiúsculas 
 1. **Feche o Advance Steel.** Se precisar, confira no Gerenciador de Tarefas que não ficou nenhum `acad.exe` aberto.
 2. **Descompacte o .zip inteiro.** Clique com o botão direito no arquivo, escolha **Extrair tudo...** e confirme em **Extrair**.
    - Não rode o instalador de dentro do .zip sem extrair.
-3. Abra a pasta extraída, `PASB-0.13.1`, e dê **dois cliques em `Instalar-PASB.cmd`**.
+3. Abra a pasta extraída, `PASB-0.14.0`, e dê **dois cliques em `Instalar-PASB.cmd`**.
    - Se o Windows mostrar "O Windows protegeu o computador" (SmartScreen), clique em **Mais informações → Executar assim mesmo**. O instalador é um script de texto; você pode abrir o `Instalar-PASB.ps1` no Bloco de Notas e ler o que ele faz.
 4. Espere a mensagem **"Pronto."** e aperte uma tecla para fechar.
 
@@ -55,7 +55,7 @@ A importação de IFC usa as bibliotecas livres xBIM e OpenCascade, sem modifica
 
 | Botão | O que faz |
 |---|---|
-| **Exportar IFC** | IFC4 georreferenciado (SIRGAS 2000/UTM ou X,Y,Z da obra), com todas as propriedades |
+| **Exportar IFC** | IFC4 georreferenciado (SIRGAS 2000/UTM ou X,Y,Z da obra), com o corpo real das peças e propriedades resumidas ou completas |
 | **Importar IFC** | Qualquer IFC como sólidos ou malhas, separado por nível com cor por nível ([docs/IFC-IMPORT.md](docs/IFC-IMPORT.md)) |
 | **Menu de ligações** | Lista as ligações do PASB e cria a escolhida |
 | **Contraventamento em X** | Ligação nativa de contraventamento com barra redonda e esticador ([docs/BRACING.md](docs/BRACING.md)) |
@@ -79,11 +79,47 @@ As ligações **Contraventamento em X** e **Sistema antidobra** são ligações 
 
 Para desfazer, use **`Remover-Macros-PASB.cmd`** (com o Advance Steel fechado).
 
-## 4. Atualizar para uma versão nova
+## 4. Tutorial: exportar e importar IFC
+
+### Exportar o modelo para IFC
+
+1. Abra o modelo no Advance Steel e clique em **PASB > Exportar IFC**.
+2. Na janela:
+   - **Escopo:** "Modelo inteiro" ou "Seleção" (com Seleção, o programa pede os objetos depois).
+   - **Objetos:** marque o que vai para o IFC. Para um arquivo mais leve, desmarque **Ligações (grupos IFC)** e **Outros** (câmeras, pontos, itens da árvore de estrutura).
+   - **Propriedades:**
+     - **Resumidas (rápido)**, o padrão: tipo de aço, perfil, comprimento, peso por metro, peso total, área de pintura e marca. Chapas, parafusos, chumbadores e soldas têm os equivalentes (espessura, norma, diâmetro, quantidade...). Tudo fica no Pset **PASB_Resumo**, com nomes em português e unidades SI.
+     - **Completas:** todas as propriedades do Advance Steel, em Psets `AS_<Classe>`. Gera um arquivo bem maior.
+   - **Georreferência:** "Sem georreferência", **SIRGAS 2000 / UTM** (zona e hemisfério) ou **Coordenadas X, Y, Z da obra**.
+     - Clique em **Selecionar...** e depois num ponto de coordenada conhecida do modelo (o ponto base).
+     - Digite as coordenadas reais desse ponto (em m ou mm) e o ângulo.
+     - Deixe marcado **"Aplicar as coordenadas na posição do modelo"** para o IFC aparecer no lugar certo no Trimble Connect e em outros visualizadores.
+   - **Arquivo de saída:** onde gravar o `.ifc`.
+3. Clique em **Exportar IFC**. A linha de comando mostra o progresso (objetos lidos, tempo, estimativa do restante).
+4. No fim, uma janela mostra o arquivo gravado, a quantidade por tipo IFC e o tempo de cada etapa. Ao lado do IFC fica um `.report.json` com os detalhes.
+
+O IFC leva o **corpo real** de cada peça, igual ao desenhado no Advance Steel. Isso inclui cortes, recortes, furos, perfis do usuário e parafusos com cabeça, arruelas e porca. O modelo não é alterado: a leitura é descartada no fim e o programa confere que nada mudou.
+
+### Importar um IFC
+
+1. Abra o desenho onde quer a importação (pode ser um desenho novo) e clique em **PASB > Importar IFC**.
+2. Clique em **Abrir...** e escolha o `.ifc`. A janela mostra o conteúdo do arquivo, os níveis e os tipos.
+3. Escolha:
+   - **Níveis e tipos:** desmarque o que não quiser. Clique na cor de um nível para trocá-la.
+   - **Geometria:** **Mesh** é bem mais rápido e serve de referência. **Solid3d** plota e cota, mas é mais lento.
+   - **Blocos:** peças iguais viram um bloco, e o DWG fica menor.
+   - **Layers e cores:** por nível (padrão), por tipo, por layer do IFC ou numa layer só.
+4. Clique em **Importar**. A janela de progresso mostra as etapas, e **Cancelar** desfaz tudo.
+5. No fim, o desenho dá **zoom na estrutura importada**. A linha de comando mostra o resumo: sólidos, malhas, blocos, posições corrigidas e peças com erro, se houver.
+6. **Ctrl+Z** desfaz a importação inteira.
+
+Detalhes: [docs/IFC-BODY.md](docs/IFC-BODY.md) (exportação) e [docs/IFC-IMPORT.md](docs/IFC-IMPORT.md) (importação).
+
+## 5. Atualizar para uma versão nova
 
 Baixe o zip da versão nova e repita os passos 1 a 3. O instalador substitui a versão anterior, e as suas configurações são mantidas. Depois de cada atualização, o aviso de segurança aparece **uma vez**: clique de novo em **Sempre carregar**.
 
-## 5. Conector IA (opcional)
+## 6. Conector IA (opcional)
 
 Só é necessário se você usa o **Claude Code** nesse computador.
 
@@ -94,7 +130,7 @@ Só é necessário se você usa o **Claude Code** nesse computador.
 
 Para desfazer o registro, use **`Remover-Conector-IA.cmd`**.
 
-## 6. Remover
+## 7. Remover
 
 Feche o Advance Steel e dê dois cliques em **`Desinstalar-PASB.cmd`**. Ele apaga só a pasta do plugin. Os diagnósticos em `Documentos\PASB-Diagnostics` e as configurações em `%APPDATA%\PASB` são mantidos.
 

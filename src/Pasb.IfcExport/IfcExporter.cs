@@ -59,7 +59,9 @@ public static class ObjectGroups
 /// <summary>
 /// Exportador IFC4 a partir do modelo neutro. Regras:
 /// - Geometria em metros; posições absolutas no sistema do modelo; georreferenciamento por IfcMapConversion.
-/// - Todas as propriedades vão para Psets "AS_&lt;ClasseDeclaradora&gt;" com o nome técnico original; nada é descartado.
+/// - Corpo: o sólido real do Advance Steel quando lido (BodyGeometry); senão, a geometria paramétrica de reserva.
+/// - Exportação completa: todas as propriedades vão para Psets "AS_&lt;ClasseDeclaradora&gt;" com o nome técnico original.
+///   Exportação resumida (Info.SummaryProperties): um Pset "PASB_Resumo" com nomes em português e unidades SI (SummaryPset).
 /// - Nenhuma geometria é inventada: sem dados suficientes, o elemento sai sem corpo e a limitação vai para o relatório.
 /// </summary>
 public static class IfcExporter
@@ -131,6 +133,7 @@ public static class IfcExporter
         w.Add("IfcRelAggregates", Str(Gid("agg-site")), Null, Null, Null, Ref(site), "(" + Ref(building) + ")");
         w.Add("IfcRelAggregates", Str(Gid("agg-building")), Null, Null, Null, Ref(building), "(" + Ref(storey) + ")");
         int elemPl = w.Add("IfcLocalPlacement", Ref(stPl), Ref(wcs));
+        var bodies = new BodyGeometry(w, body);
 
         // ---------- Elementos
         var contained = new List<int>();
@@ -152,16 +155,16 @@ public static class IfcExporter
             switch (e.Category)
             {
                 case "beam":
-                    id = w.Add("IfcBeam", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Shape(w, e, k, body, axisCtx, r), Str(e.SourceHandle), Enum("BEAM"));
+                    id = w.Add("IfcBeam", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Shape(w, bodies, e, k, body, axisCtx, r), Str(e.SourceHandle), Enum("BEAM"));
                     break;
                 case "plate":
-                    id = w.Add("IfcPlate", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Shape(w, e, k, body, axisCtx, r), Str(e.SourceHandle), Enum("SHEET"));
+                    id = w.Add("IfcPlate", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Shape(w, bodies, e, k, body, axisCtx, r), Str(e.SourceHandle), Enum("SHEET"));
                     break;
                 case "bolts":
                 case "anchors":
                 {
                     double? d = Dim(e, "diameter", k), l = Dim(e, "length", k);
-                    id = w.Add("IfcMechanicalFastener", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Shape(w, e, k, body, axisCtx, r), Str(e.SourceHandle),
+                    id = w.Add("IfcMechanicalFastener", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Shape(w, bodies, e, k, body, axisCtx, r), Str(e.SourceHandle),
                         d is null ? Null : Real(d.Value), l is null ? Null : Real(l.Value), Enum(e.Category == "anchors" ? "ANCHORBOLT" : "BOLT"));
                     break;
                 }
@@ -180,14 +183,23 @@ public static class IfcExporter
                     Count(r.SkippedByCategory, e.Category);
                     continue;
                 default:
-                    id = w.Add("IfcBuildingElementProxy", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), Null, Str(e.SourceHandle), Enum("NOTDEFINED"));
-                    Note(r, $"Categoria '{e.Category}' exportada como IfcBuildingElementProxy, sem corpo.");
+                {
+                    // Peças especiais e outros: corpo real quando existe (ex.: SpecialPart), senão sem corpo.
+                    string shape = e.Geometry?.Body is not null ? Shape(w, bodies, e, k, body, axisCtx, r) : Null;
+                    id = w.Add("IfcBuildingElementProxy", Str(gid), Null, Str(name), Null, Str(e.SourceType), Ref(elemPl), shape, Str(e.SourceHandle), Enum("NOTDEFINED"));
+                    if (shape == Null) Note(r, $"Categoria '{e.Category}' exportada como IfcBuildingElementProxy, sem corpo.");
                     break;
+                }
             }
             if (e.SourceHandle is not null) byHandle[e.SourceHandle] = id;
             if (e.Category is not ("joint" or "connection" or "joint_parameters")) contained.Add(id);
             Count(r.ExportedByIfcClass, IfcClassOf(e.Category));
-            Psets(w, e, id, gid, metre, kg, area, volume, r);
+            if (x.Info.SummaryProperties)
+            {
+                r.Properties += SummaryPset.Write(w, e, id, gid, k, metre, kg, area);
+                r.PropertySets++;
+            }
+            else Psets(w, e, id, gid, metre, kg, area, volume, r);
         }
 
         if (contained.Count > 0)
@@ -203,8 +215,13 @@ public static class IfcExporter
         }
 
         foreach (NeutralElement e in x.Elements)
+        {
+            if (e.Geometry?.Body is not null) continue;   // corpo real: as limitações da geometria paramétrica não se aplicam
             foreach (string lim in e.Geometry?.Limitations ?? new List<string>())
                 Note(r, $"{e.Category}: {lim}");
+        }
+        if (bodies.MapCount > 0)
+            Note(r, $"Parafusos e chumbadores: {bodies.MapCount} geometria(s) de parafuso diferente(s), repetidas por IfcMappedItem.");
         foreach (string wmsg in x.Info.Warnings) r.Warnings.Add(wmsg);
 
         return w.Build(opt.FileName, x.Info.StartedUtc ?? DateTime.UtcNow.ToString("s"));
@@ -212,13 +229,28 @@ public static class IfcExporter
 
     // ------------------------------------------------------------------ geometria
 
-    private static string Shape(StepWriter w, NeutralElement e, double? k, int bodyCtx, int axisCtx, ExportReport r)
+    private static string Shape(StepWriter w, BodyGeometry bodies, NeutralElement e, double? k, int bodyCtx, int axisCtx, ExportReport r)
     {
         NeutralGeometry? g = e.Geometry;
         if (g is null || k is null) return Null;
         double s = k.Value;
         double[] P(double[] p) => new[] { p[0] * s, p[1] * s, p[2] * s };
         int Pt(double[] p) => w.Add("IfcCartesianPoint", Point(P(p)));
+
+        // Corpo sólido real do Advance Steel: cortes, recortes, furos, perfis do usuário, cabeça/arruela/porca dos parafusos.
+        if (g.Body is { } mesh)
+        {
+            int? rep = null;
+            if (e.Category is "bolts" or "anchors" && g.Kind == "points" && g.Points.Count > 0 && g.Normal is { } bn)
+                rep = bodies.MappedBolts(mesh, g.Points, bn, g.XDirection, s);
+            rep ??= bodies.Tessellation(mesh, s);
+            var reps = new List<int>();
+            if (g.Kind == "axis" && g.Points.Count >= 2)
+                reps.Add(w.Add("IfcShapeRepresentation", Ref(axisCtx), Str("Axis"), Str("Curve3D"), "(" + Ref(w.Add("IfcPolyline", Refs(g.Points.Select(Pt)))) + ")"));
+            reps.Add(rep.Value);
+            Note(r, "Corpo: sólido real do Advance Steel (IfcPolygonalFaceSet), com cortes, recortes, furos, perfis do usuário e parafusos com cabeça, arruelas e porca.");
+            return Ref(w.Add("IfcProductDefinitionShape", Null, Null, Refs(reps)));
+        }
 
         switch (g.Kind)
         {

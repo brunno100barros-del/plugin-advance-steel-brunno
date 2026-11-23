@@ -70,6 +70,8 @@ public sealed class ImportCommand
             progress.Close();
             if (st == null) { ed.WriteMessage("\nPASB: importação cancelada; nada foi desenhado.\n"); return; }
             ed.WriteMessage($"\nPASB: importação concluída em {clock.Elapsed.TotalSeconds:0.0} s: {st.Summary()}");
+            // Enquadra o que foi importado (num desenho novo, a vista inicial não mostra uma estrutura de dezenas de metros).
+            if (st.Solids + st.Meshes + st.BlockRefs > 0) doc.SendStringToExecute("._ZOOM _E ", true, false, false);
             foreach (string w in pkg.Warnings.Take(10)) ed.WriteMessage("\nPASB: aviso: " + w);
             if (pkg.Warnings.Count > 10) ed.WriteMessage($"\nPASB: ... e mais {pkg.Warnings.Count - 10} aviso(s).");
             ed.WriteMessage("\nPASB: Ctrl+Z desfaz a importação inteira.\n");
@@ -179,12 +181,44 @@ public sealed class ImportCommand
 
     private sealed class ImportStats
     {
-        public int Solids, Meshes, FallbackMeshes, Skipped, BlockDefs, BlockRefs;
+        public int Solids, Meshes, FallbackMeshes, Skipped, BlockDefs, BlockRefs, Orthonormalized, Baked, Failed;
+        public string? FirstError;
         public readonly SortedSet<string> Layers = new(StringComparer.OrdinalIgnoreCase);
         public string Summary() =>
             $"{Solids} sólido(s), {Meshes} malha(s)" + (FallbackMeshes > 0 ? $" ({FallbackMeshes} como malha por falha na conversão em sólido)" : "") +
             (BlockDefs > 0 ? $", {BlockRefs} inserção(ões) de {BlockDefs} bloco(s)" : "") +
-            (Skipped > 0 ? $", {Skipped} não importado(s)" : "") + $"; layers: {string.Join(", ", Layers)}.";
+            (Orthonormalized > 0 ? $", {Orthonormalized} posição(ões) com eixos levemente tortos corrigida(s)" : "") +
+            (Baked > 0 ? $", {Baked} peça(s) com escala não uniforme desenhada(s) já transformada(s)" : "") +
+            (Skipped > 0 ? $", {Skipped} não importado(s)" : "") +
+            (Failed > 0 ? $", {Failed} com erro (primeiro: {FirstError})" : "") + $"; layers: {string.Join(", ", Layers)}.";
+    }
+
+    /// <summary>
+    /// Posição aceita pelo AutoCAD. Solid3d e blocos só aceitam matriz ortogonal com escala uniforme (senão: eCannotScaleNonUniformly).
+    /// Matrizes do IFC com resíduo numérico (ex.: eixos com produto escalar 3·10⁻⁵, 13 vigas do IFC do SESI) são ortonormalizadas;
+    /// se a distorção for real (&gt; 0,1 %), devolve false: o chamador aplica a matriz direto nos vértices.
+    /// </summary>
+    internal static bool TryUniform(ref Matrix3d xf, out bool corrected)
+    {
+        corrected = false;
+        if (xf.IsUniscaledOrtho()) return true;
+        CoordinateSystem3d cs = xf.CoordinateSystem3d;
+        double scale = cs.Xaxis.Length;
+        if (scale < 1e-12) return false;
+        Vector3d x = cs.Xaxis / scale;
+        Vector3d yRaw = cs.Yaxis - x * cs.Yaxis.DotProduct(x);
+        if (yRaw.Length < 1e-12) return false;
+        Vector3d y = yRaw.GetNormal();
+        Vector3d z = x.CrossProduct(y);
+        if (cs.Zaxis.DotProduct(z) < 0) z = -z;   // espelhamento preservado
+        double dev = Math.Max((cs.Xaxis - x * scale).Length, Math.Max((cs.Yaxis - y * scale).Length, (cs.Zaxis - z * scale).Length)) / scale;
+        if (dev > 1e-3) return false;
+        Matrix3d fixedXf = Matrix3d.AlignCoordinateSystem(Point3d.Origin, Vector3d.XAxis, Vector3d.YAxis, Vector3d.ZAxis,
+            cs.Origin, x * scale, y * scale, z * scale);
+        if (!fixedXf.IsUniscaledOrtho()) return false;
+        xf = fixedXf;
+        corrected = true;
+        return true;
     }
 
     /// <summary>Desenha tudo numa transação; devolve null (sem gravar nada) se o usuário cancelar.</summary>
@@ -222,46 +256,71 @@ public sealed class ImportCommand
                     if (progress.CancelRequested) { TempSpace = null; TempTr = null; tr.Abort(); return null; }
                 }
                 if (!geoms.TryGetValue(inst.GeometryId, out MeshGeometry? g)) { st.Skipped++; continue; }
-                string layer = LayerName(inst, choice);
-                short? layerColor = s.ColorMode == ImportColorMode.ByStorey && s.LayerMode == ImportLayerMode.ByStorey
-                    ? choice.StoreyColors.GetValueOrDefault(inst.StoreyKey, (short)7) : null;
-                EnsureLayer(tr, db, layers, layer, layerColor);
-                st.Layers.Add(layer);
-                Matrix3d xf = ToMatrix(inst.Transform, unit);
-
-                Entity? ent;
-                if (s.Blocks && uses[inst.GeometryId] > 1)
+                // Cada peça isolada: um erro numa peça não pode mais descartar a importação inteira (antes: eCannotScaleNonUniformly
+                // numa viga do IFC do SESI abortava tudo e nada aparecia).
+                Entity? ent = null;
+                try
                 {
-                    if (!blocks.TryGetValue(g.Id, out ObjectId btrId))
+                    string layer = LayerName(inst, choice);
+                    short? layerColor = s.ColorMode == ImportColorMode.ByStorey && s.LayerMode == ImportLayerMode.ByStorey
+                        ? choice.StoreyColors.GetValueOrDefault(inst.StoreyKey, (short)7) : null;
+                    EnsureLayer(tr, db, layers, layer, layerColor);
+                    st.Layers.Add(layer);
+                    Matrix3d xf = ToMatrix(inst.Transform, unit);
+                    bool uniform = TryUniform(ref xf, out bool corrected);
+                    if (corrected) st.Orthonormalized++;
+
+                    if (!uniform)
                     {
-                        Entity? def = MakeEntity(g, unit, s, st);
-                        if (def == null) { st.Skipped++; continue; }
-                        def.Layer = "0";
-                        def.Color = AcColor.FromColorIndex(AcColorMethod.ByBlock, 0);
-                        btrId = DefineBlock(tr, db, UniqueBlockName(tr, db, $"IFC_{stem}_{inst.IfcType[3..]}_{g.Id}"), def);
-                        blocks[g.Id] = btrId; st.BlockDefs++;
+                        // Escala não uniforme de verdade: a matriz vai direto nos vértices (sem bloco, sem TransformBy).
+                        ent = MakeEntity(g, unit, s, st, xf);
+                        if (ent == null) { st.Skipped++; continue; }
+                        st.Baked++;
                     }
-                    ent = new BlockReference(Point3d.Origin, btrId);
-                    st.BlockRefs++;
-                }
-                else
-                {
-                    ent = MakeEntity(g, unit, s, st);
-                    if (ent == null) { st.Skipped++; continue; }
-                }
+                    else if (s.Blocks && uses[inst.GeometryId] > 1)
+                    {
+                        if (!blocks.TryGetValue(g.Id, out ObjectId btrId))
+                        {
+                            Entity? def = MakeEntity(g, unit, s, st);
+                            if (def == null) { st.Skipped++; continue; }
+                            def.Layer = "0";
+                            def.Color = AcColor.FromColorIndex(AcColorMethod.ByBlock, 0);
+                            btrId = DefineBlock(tr, db, UniqueBlockName(tr, db, $"IFC_{stem}_{inst.IfcType[3..]}_{g.Id}"), def);
+                            blocks[g.Id] = btrId; st.BlockDefs++;
+                        }
+                        ent = new BlockReference(Point3d.Origin, btrId);
+                        st.BlockRefs++;
+                    }
+                    else
+                    {
+                        ent = MakeEntity(g, unit, s, st);
+                        if (ent == null) { st.Skipped++; continue; }
+                    }
 
-                ent.SetDatabaseDefaults(db);
-                ent.Layer = layer;
-                ApplyColor(ent, inst, choice, layerColor != null);
-                ent.TransformBy(xf);
-                space.AppendEntity(ent);
-                tr.AddNewlyCreatedDBObject(ent, true);
-                ent.XData = new ResultBuffer(
-                    new TypedValue((int)DxfCode.ExtendedDataRegAppName, RegApp),
-                    new TypedValue((int)DxfCode.ExtendedDataAsciiString, inst.IfcType),
-                    new TypedValue((int)DxfCode.ExtendedDataAsciiString, inst.GlobalId ?? ""),
-                    new TypedValue((int)DxfCode.ExtendedDataAsciiString, Trim(inst.Name ?? "")),
-                    new TypedValue((int)DxfCode.ExtendedDataAsciiString, Trim(choice.StoreyNames.GetValueOrDefault(inst.StoreyKey, "Sem nível"))));
+                    ent.SetDatabaseDefaults(db);
+                    ent.Layer = layer;
+                    ApplyColor(ent, inst, choice, layerColor != null);
+                    if (uniform) ent.TransformBy(xf);
+                    space.AppendEntity(ent);
+                    tr.AddNewlyCreatedDBObject(ent, true);
+                    ent.XData = new ResultBuffer(
+                        new TypedValue((int)DxfCode.ExtendedDataRegAppName, RegApp),
+                        new TypedValue((int)DxfCode.ExtendedDataAsciiString, inst.IfcType),
+                        new TypedValue((int)DxfCode.ExtendedDataAsciiString, inst.GlobalId ?? ""),
+                        new TypedValue((int)DxfCode.ExtendedDataAsciiString, Trim(inst.Name ?? "")),
+                        new TypedValue((int)DxfCode.ExtendedDataAsciiString, Trim(choice.StoreyNames.GetValueOrDefault(inst.StoreyKey, "Sem nível"))));
+                }
+                catch (System.Exception ex)
+                {
+                    st.Failed++;
+                    st.FirstError ??= $"{inst.IfcType} {inst.GlobalId}: {ex.Message}";
+                    try
+                    {
+                        if (ent != null && ent.ObjectId.IsValid) { if (!ent.IsErased) ent.Erase(); }
+                        else ent?.Dispose();
+                    }
+                    catch (System.Exception) { }
+                }
             }
             progress.Report(100, "Gravando no desenho");
             System.Windows.Forms.Application.DoEvents();
@@ -273,10 +332,15 @@ public sealed class ImportCommand
     }
 
     /// <summary>Cria o Solid3d (ou a malha) a partir dos triângulos, em coordenadas locais da geometria.</summary>
-    private static Entity? MakeEntity(MeshGeometry g, double unit, ImportSettings s, ImportStats st)
+    /// <param name="bake">Matriz aplicada direto nos vértices (escala não uniforme, que o Solid3d não aceita em TransformBy).</param>
+    private static Entity? MakeEntity(MeshGeometry g, double unit, ImportSettings s, ImportStats st, Matrix3d? bake = null)
     {
         var pts = new Point3dCollection();
-        for (int k = 0; k < g.VertexCount; k++) pts.Add(new Point3d(g.Vertices[3 * k] * unit, g.Vertices[3 * k + 1] * unit, g.Vertices[3 * k + 2] * unit));
+        for (int k = 0; k < g.VertexCount; k++)
+        {
+            var p = new Point3d(g.Vertices[3 * k] * unit, g.Vertices[3 * k + 1] * unit, g.Vertices[3 * k + 2] * unit);
+            pts.Add(bake is Matrix3d m ? p.TransformBy(m) : p);
+        }
         var faces = new Int32Collection();
         for (int t = 0; t < g.TriangleCount; t++) { faces.Add(3); faces.Add(g.Triangles[3 * t]); faces.Add(g.Triangles[3 * t + 1]); faces.Add(g.Triangles[3 * t + 2]); }
         var mesh = new SubDMesh();

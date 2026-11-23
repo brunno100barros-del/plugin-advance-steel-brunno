@@ -39,6 +39,8 @@ public sealed class ExtractionInfo
     public string? Command { get; set; }
     public string? StartedUtc { get; set; }
     public string? TransactionMode { get; set; }
+    /// <summary>true: exportação resumida (ReadProfile.ExportSummary): só as propriedades da lista SummaryFields foram lidas.</summary>
+    public bool SummaryProperties { get; set; }
     public List<string> Warnings { get; } = new();
 }
 

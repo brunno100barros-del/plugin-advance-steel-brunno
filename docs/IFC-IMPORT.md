@@ -46,6 +46,16 @@ Para cada elemento, o leitor sobe pela hierarquia do IFC até achar um `IfcBuild
 - O IFC é convertido para metros pelas unidades declaradas no próprio IFC, e depois para as unidades do desenho (`INSUNITS`).
 - A geometria é colocada nas **coordenadas do IFC**, sem deslocamento. Num IFC com coordenadas UTM, os objetos ficam longe da origem do desenho.
 
+## Correção na 0.14.0: "o desenho não aparece"
+
+Até a 0.13.1, um erro em **uma** peça descartava a importação inteira. No IFC do SESI, 13 vigas vinham com os eixos levemente tortos (resíduo numérico, produto escalar até 3·10⁻⁵). O AutoCAD recusa essa matriz em sólidos e blocos (`eCannotScaleNonUniformly`), então nada era desenhado.
+
+Agora:
+- matrizes quase ortogonais são **ortonormalizadas** antes de posicionar (desvio até 0,1 %);
+- distorção real (escala não uniforme) é aplicada **direto nos vértices**, sem bloco;
+- cada peça é isolada: se uma falhar, as outras entram, e o resumo informa quantas falharam e o primeiro erro;
+- ao final, **ZOOM Extensão**, para a estrutura aparecer mesmo num desenho novo.
+
 ## Limitações conhecidas
 
 - **Solid3d** a partir de malha: o AutoCAD só converte malhas fechadas. Peças abertas ou com faces soltas entram como malha (opção ligada por padrão) e são contadas no resumo da linha de comando.

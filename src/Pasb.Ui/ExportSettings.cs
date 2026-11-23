@@ -23,6 +23,9 @@ public sealed class ExportSettings
     public ExportScope Scope { get; set; } = ExportScope.Model;
     public Dictionary<string, bool> Groups { get; set; } = ObjectGroups.All.ToDictionary(g => g, _ => true);
 
+    /// <summary>true (padrão): exportação resumida, só as propriedades principais (Pset PASB_Resumo); false: todas (Psets AS_*).</summary>
+    public bool SummaryProperties { get; set; } = true;
+
     public string ProjectName { get; set; } = "Projeto Advance Steel";
     public string SiteName { get; set; } = "Site";
     public string BuildingName { get; set; } = "Building";

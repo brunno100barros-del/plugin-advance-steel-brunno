@@ -93,5 +93,22 @@ Run("sem dados geométricos: geometria nula e aviso", () =>
     Eq(true, x.Elements[0].ValidationMessages.Any(m => m.Contains("geometria")), "aviso");
 });
 
+const string BodyGood = """{"handle":"B1","clrType":"Autodesk.AdvanceSteel.Modelling.Plate","inheritance":["Plate","PlateBase","AtomicElement","FilerObject"],"properties":[{"technicalName":"GetModeler","declaringType":"AtomicElement","argument":"kDetailed","source":"method","dataType":"J","status":"Read","rawValue":{"v":[0,0,0,1,0,0,1,1,0,0,1,0,0,0,1,1,0,1,1,1,1,0,1,1],"f":[[[0,3,2,1]],[[0,1,5,4]],[[1,2,6,5]],[[2,3,7,6]],[[3,0,4,7]],[[4,5,6,7]]]}}]}""";
+const string BodyBad = """{"handle":"B2","clrType":"Autodesk.AdvanceSteel.Modelling.Plate","inheritance":["Plate","PlateBase","AtomicElement","FilerObject"],"properties":[{"technicalName":"GetModeler","declaringType":"AtomicElement","argument":"kDetailed","source":"method","dataType":"J","status":"Read","rawValue":{"v":[0,0,0,1,0,0,1,1,0],"f":[[[0,1,9]]]}}]}""";
+Extraction bx = DiagnosticImporter.Import(RunMm, new[] { BodyGood, BodyBad });
+Run("corpo sólido: vira Geometry.Body e sai das propriedades", () =>
+{
+    NeutralElement e = bx.Elements[0];
+    Eq("body", e.Geometry!.Kind, "tipo"); Eq(8, e.Geometry.Body!.VertexCount, "vértices"); Eq(6, e.Geometry.Body.Faces.Count, "faces");
+    Eq(false, e.Properties.Any(p => p.Key == NeutralMesh.SourceKey), "registro bruto removido");
+    Eq(false, NeutralModelJson.Serialize(bx).Contains("\"Body\""), "fora do JSON neutro");
+});
+Run("corpo sólido inválido (índice fora): descartado com aviso", () =>
+{
+    NeutralElement e = bx.Elements[1];
+    Eq(null, e.Geometry?.Body, "sem corpo");
+    Eq(true, e.ValidationMessages.Any(m => m.Contains("formato inesperado")), "aviso");
+});
+
 Console.WriteLine($"{passed} passaram, {failed} falharam");
 return failed == 0 ? 0 : 1;

@@ -102,8 +102,9 @@ public sealed class Commands
     /// Diagnostic: trace gravado no disco físico antes de cada leitura. Export: trace só por objeto, sem esperar o disco,
     /// e sem as leituras de ApprovedMethods.OmittedInExport (docs/EXPORT-PERFORMANCE.md).
     /// </param>
+    /// <param name="readBody">true: lê o corpo sólido real de cada peça (exportação IFC; ApprovedMethods.Body).</param>
     internal static (string outDir, bool safe) Run(Editor ed, string command, Func<(AsId[] ids, int nonSteel)> collect,
-        ReadProfile profile = ReadProfile.Diagnostic)
+        ReadProfile profile = ReadProfile.Diagnostic, bool readBody = false)
     {
         bool diagnostic = profile == ReadProfile.Diagnostic;
         AcDoc doc = AcApp.DocumentManager.MdiActiveDocument;
@@ -123,7 +124,11 @@ public sealed class Commands
             ["dbmodBefore"] = dbmodBefore?.ToString(),
             // Valores criados sob demanda durante a leitura (por exemplo, IDs) podem não existir no modelo salvo.
             ["transactionMode"] = TransactionMode,
-            ["readProfile"] = diagnostic ? "diagnostic" : "export",
+            ["readProfile"] = profile switch
+            {
+                ReadProfile.Diagnostic => "diagnostic", ReadProfile.ExportSummary => "export-summary", _ => "export",
+            },
+            ["readBody"] = readBody,
         };
         if (!diagnostic)
             run["omittedReads"] = new JsonArray(ApprovedMethods.OmittedInExport.Select(n => (JsonNode)JsonValue.Create(n)!).ToArray());
@@ -178,7 +183,7 @@ public sealed class Commands
                             string h = SafeHandle(ids[i]) ?? "?";
                             trace.Write($"[{i + 1}/{ids.Length}] tipo={o.GetType().Name}");
                             Action<string>? perRead = diagnostic ? step => trace.Write($"  {h} {step}") : null;
-                            var (header, records, objectType) = ObjectReader.Read(o, perRead, profile);
+                            var (header, records, objectType) = ObjectReader.Read(o, perRead, profile, readBody);
                             output.WriteObject(header, objectType, records);
                             trace.Write($"[{i + 1}/{ids.Length}] gravado ({records.Count} leituras)");
                         }

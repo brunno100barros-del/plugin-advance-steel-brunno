@@ -14,4 +14,11 @@ public enum ReadProfile
     /// menos as leituras caras de ApprovedMethods.OmittedInExport; trace só por objeto e sem esperar o disco físico.
     /// </summary>
     Export,
+
+    /// <summary>
+    /// Exportação IFC resumida: só as propriedades da lista de SummaryFields (material, perfil, comprimento, pesos, área de pintura,
+    /// marca, norma/diâmetro dos parafusos...) e as leituras que a geometria usa. Sem getAttributeStatus, User Attributes nem
+    /// varredura de todos os getters. Mesmo trace e mesmas garantias do perfil Export.
+    /// </summary>
+    ExportSummary,
 }

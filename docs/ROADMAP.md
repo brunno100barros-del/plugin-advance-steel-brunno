@@ -37,13 +37,14 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Exportar todas as propriedades acessíveis em atributos/Psets padrão ou customizados.
 - [ ] Incorporar georreferenciamento IFC4.
 - [x] Leitura otimizada para exportação (perfil de trabalho, 0.13.1; docs/EXPORT-PERFORMANCE.md).
+- [x] Corpo sólido real das peças (cortes, furos, perfis do usuário, parafusos com cabeça, arruelas e porca) e exportação resumida (0.14.0; docs/IFC-BODY.md).
 - [ ] Medir o tempo de exportação antes/depois num modelo real.
 - [ ] Validar em visualizador independente e comparar propriedades.
 
 ## Etapa 6 — Interface e distribuição
 - [ ] Interface de ponto de controle e exportação.
 - [ ] Relatório de cobertura, perdas e avisos.
-- [x] Instalador 0.13.1 e guia de instalação.
+- [x] Instalador 0.14.0 e guia de instalação.
 - [ ] Logs e robustez da instalação.
 - [ ] Validação do instalador e do plugin em ambiente limpo com Advance Steel 2027.
 

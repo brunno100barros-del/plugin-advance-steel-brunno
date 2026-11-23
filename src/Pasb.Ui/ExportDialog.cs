@@ -28,6 +28,7 @@ public sealed class ExportDialog : Form
     private readonly RadioButton _scopeModel = Radio("Modelo inteiro"), _scopeSel = Radio("Seleção");
     private readonly TextBox _project = Box(), _site = Box(), _building = Box();
     private readonly Dictionary<string, CheckBox> _groups = new();
+    private readonly RadioButton _propsSummary = Radio("Resumidas (rápido)"), _propsFull = Radio("Completas (todas do Advance Steel)");
     private readonly RadioButton _geoNone = Radio("Sem georreferência"), _geoSirgas = Radio("SIRGAS 2000 / UTM"), _geoLocal = Radio("Coordenadas X, Y, Z da obra");
     private readonly NumericUpDown _zone = new() { Minimum = 1, Maximum = 60, Width = 60 };
     private readonly ComboBox _hemi = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 80 };
@@ -95,7 +96,9 @@ public sealed class ExportDialog : Form
         none.Click += (_, _) => { foreach (var cb in _groups.Values) cb.Checked = false; };
         var row = new FlowLayoutPanel { AutoSize = true, BackColor = Panel, Margin = new Padding(0, 8, 0, 0) };
         row.Controls.Add(all); row.Controls.Add(none); c2.Controls.Add(row);
-        c2.Controls.Add(Note("Todas as propriedades lidas do Advance Steel vão para Psets AS_<Classe>, sem filtro."));
+        c2.Controls.Add(Header("PROPRIEDADES"));
+        c2.Controls.Add(Group(_propsSummary, _propsFull));
+        c2.Controls.Add(Note("Resumidas: material, perfil, comprimento, peso por metro, peso total, área de pintura e marca (chapas, parafusos e soldas: equivalentes). Completas: todas, em Psets AS_<Classe>."));
         root.Controls.Add(c2, 1, 0);
 
         // Coluna 3: georreferência
@@ -157,6 +160,7 @@ public sealed class ExportDialog : Form
         (s.Scope == ExportScope.Selection ? _scopeSel : _scopeModel).Checked = true;
         _project.Text = s.ProjectName; _site.Text = s.SiteName; _building.Text = s.BuildingName;
         foreach (var (key, _) in GroupLabels) _groups[key].Checked = s.Groups.GetValueOrDefault(key, true);
+        (s.SummaryProperties ? _propsSummary : _propsFull).Checked = true;
         (s.Geo switch { GeoChoice.Sirgas => _geoSirgas, GeoChoice.Local => _geoLocal, _ => _geoNone }).Checked = true;
         _zone.Value = Math.Clamp(s.UtmZone, 1, 60);
         _hemi.SelectedIndex = s.Hemisphere == Hemisphere.North ? 1 : 0;
@@ -179,6 +183,7 @@ public sealed class ExportDialog : Form
         s.Scope = _scopeSel.Checked ? ExportScope.Selection : ExportScope.Model;
         s.ProjectName = _project.Text.Trim(); s.SiteName = _site.Text.Trim(); s.BuildingName = _building.Text.Trim();
         foreach (var (key, _) in GroupLabels) s.Groups[key] = _groups[key].Checked;
+        s.SummaryProperties = _propsSummary.Checked;
         s.Geo = _geoSirgas.Checked ? GeoChoice.Sirgas : _geoLocal.Checked ? GeoChoice.Local : GeoChoice.None;
         s.UtmZone = (int)_zone.Value;
         s.Hemisphere = _hemi.SelectedIndex == 1 ? Hemisphere.North : Hemisphere.South;
@@ -239,7 +244,7 @@ public sealed class ExportDialog : Form
 
     private static Label Header(string t) => Brand.SectionLabel(t);
     private static Label Caption(string t) => new() { Text = t, AutoSize = true, ForeColor = Text_, Margin = new Padding(3, 6, 3, 2) };
-    private static Label Note(string t) => new() { Text = t, AutoSize = false, Width = 220, Height = 48, ForeColor = Muted, Margin = new Padding(3, 10, 3, 3) };
+    private static Label Note(string t) => new() { Text = t, AutoSize = false, Width = 230, Height = 78, ForeColor = Muted, Margin = new Padding(3, 10, 3, 3) };
     private static RadioButton Radio(string t) => new() { Text = t, AutoSize = true, ForeColor = Text_, Margin = new Padding(3, 3, 3, 3) };
 
     private static TextBox Box(bool readOnly = false)

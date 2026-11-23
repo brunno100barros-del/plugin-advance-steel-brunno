@@ -112,5 +112,95 @@ Run("sem georreferenciamento: aviso e sem CRS", () =>
     True(!s.Contains("IFCMAPCONVERSION") && r2.Warnings.Any(w => w.Contains("georreferenciamento")), "aviso");
 });
 
+// ------------------------------------------------------------------ corpo sólido real (0.14.0)
+
+// Cubo de lado 2h centrado em c, com vértices a partir de "offset"; se hole, a face de cima tem um furo quadrado.
+static (List<double> v, List<string> f) Cube(double cx, double cy, double cz, double h, int offset, bool hole = false)
+{
+    var v = new List<double>();
+    foreach (var (dx, dy, dz) in new[] { (-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1), (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1) })
+        v.AddRange(new[] { cx + dx * h, cy + dy * h, cz + dz * h });
+    int o = offset;
+    string L(params int[] i) => "[" + string.Join(",", i.Select(k => k + o)) + "]";
+    var f = new List<string> { "[" + L(0, 3, 2, 1) + "]", "[" + L(0, 1, 5, 4) + "]", "[" + L(1, 2, 6, 5) + "]", "[" + L(2, 3, 7, 6) + "]", "[" + L(3, 0, 4, 7) + "]" };
+    if (hole)
+    {
+        foreach (var (dx, dy) in new[] { (-0.5, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5) }) v.AddRange(new[] { cx + dx * h, cy + dy * h, cz + h });
+        f.Add("[" + L(4, 5, 6, 7) + "," + L(11, 10, 9, 8) + "]");
+    }
+    else f.Add("[" + L(4, 5, 6, 7) + "]");
+    return (v, f);
+}
+static string BodyProp(params (List<double> v, List<string> f)[] parts) =>
+    """{"technicalName":"GetModeler","declaringType":"AtomicElement","argument":"kDetailed","source":"method","dataType":"J","status":"Read","rawValue":{"v":[""" +
+    string.Join(",", parts.SelectMany(p => p.v).Select(d => d.ToString(System.Globalization.CultureInfo.InvariantCulture))) + "],\"f\":[" + string.Join(",", parts.SelectMany(p => p.f)) + "]}}";
+void Integrity(string s)
+{
+    var defined = new HashSet<int>(Regex.Matches(s, @"^#(\d+)=", RegexOptions.Multiline).Select(m => int.Parse(m.Groups[1].Value)));
+    True(defined.Count > 0 && defined.Max() == defined.Count, "sequência");
+    foreach (Match m in Regex.Matches(s, @"(?<!^)#(\d+)", RegexOptions.Multiline))
+        True(defined.Contains(int.Parse(m.Groups[1].Value)), "referência inexistente #" + m.Groups[1].Value);
+    foreach (string line in s.Split('\n').Where(l => l.StartsWith('#')))
+    {
+        string noStr = Regex.Replace(line, "'(?:[^']|'')*'", "''");
+        True(noStr.Count(c => c == '(') == noStr.Count(c => c == ')'), "desbalanceado: " + line);
+    }
+}
+
+string PlateWithBody = Plate.Replace("\"properties\":[", "\"properties\":[" + BodyProp(Cube(98, 50, 2.375, 2.375, 0, hole: true)) + ",");
+string BoltWithBody = Bolt.Replace("\"properties\":[", "\"properties\":[" + BodyProp(Cube(30, 30, 2, 5, 0), Cube(160, 30, 2, 5, 8)) + ",");
+Extraction xb = DiagnosticImporter.Import(Run1, new[] { PlateWithBody, BoltWithBody, Joint });
+string ifcB = IfcExporter.Export(xb, new ExportOptions(), out ExportReport repB);
+
+Run("corpo real: chapa como IfcPolygonalFaceSet, com furo; sem extrusão paramétrica", () =>
+{
+    Integrity(ifcB);
+    True(ifcB.Contains("=IFCPOLYGONALFACESET(") && ifcB.Contains("=IFCCARTESIANPOINTLIST3D("), "face set");
+    True(ifcB.Contains("=IFCINDEXEDPOLYGONALFACEWITHVOIDS(("), "face com furo");
+    True(ifcB.Contains("'Tessellation'"), "tipo de representação");
+    True(!ifcB.Contains("=IFCARBITRARYCLOSEDPROFILEDEF("), "sem contorno extrudado");
+    True(Regex.IsMatch(ifcB, @"\(0\.0956[23],0\.0476[23],0\.\)"), "vértice em metros, 5 casas");
+    True(!repB.Limitations.Any(l => l.Contains("Contorno externo apenas")), "limitação paramétrica não se aplica");
+});
+Run("corpo real: parafusos iguais viram 1 IfcRepresentationMap e 2 IfcMappedItem", () =>
+{
+    True(Regex.Matches(ifcB, "=IFCREPRESENTATIONMAP\\(").Count == 1, "uma geometria de parafuso");
+    True(Regex.Matches(ifcB, "=IFCMAPPEDITEM\\(").Count == 2, "dois parafusos");
+    True(ifcB.Contains("'MappedRepresentation'"), "representação mapeada");
+    True(ifcB.Contains("=IFCCARTESIANPOINT((0.16,0.03,0.002));"), "posição do 2º parafuso (ponto médio, m)");
+    True(!ifcB.Contains("=IFCCIRCLEPROFILEDEF("), "sem cilindro simplificado");
+});
+Run("corpo real: separação desigual volta ao corpo inteiro", () =>
+{
+    // Três pontos médios para dois cubos: um "parafuso" fica sem faces; usa o corpo inteiro, sem mapeamento.
+    string three = BoltWithBody.Replace("[[30,30,2],[160,30,2]]", "[[30,30,2],[160,30,2],[95,500,2]]");
+    string s = IfcExporter.Export(DiagnosticImporter.Import(Run1, new[] { three }), new ExportOptions(), out _);
+    Integrity(s);
+    True(!s.Contains("=IFCMAPPEDITEM(") && s.Contains("=IFCPOLYGONALFACESET("), "corpo inteiro");
+});
+
+const string RunSummary = """{"tool":"PASB Diagnostics","insunits":"Millimeters","transactionMode":"write-discarded","readProfile":"export-summary","startedUtc":"2026-11-20T10:00:00Z"}""";
+string PlateSummary = Plate.Replace("\"properties\":[", "\"properties\":[" +
+    """{"technicalName":"GetSinglePartPositionNumber","declaringType":"AtomicElement","source":"method","dataType":"System.String","status":"Read","rawValue":"p12"},""" +
+    """{"technicalName":"GetPhysLengthAndWidth","declaringType":"PlateBase","source":"method","dataType":"J","status":"Read","rawValue":{"dLength":196,"dWidth":100}},""" +
+    """{"technicalName":"GetPaintArea","declaringType":"PlateBase","source":"method","dataType":"System.Double","status":"Read","rawValue":41000},""");
+Extraction xs = DiagnosticImporter.Import(RunSummary, new[] { PlateSummary, Bolt, Joint });
+string ifcS = IfcExporter.Export(xs, new ExportOptions(), out ExportReport repS);
+
+Run("resumida: só o Pset PASB_Resumo, com nomes e unidades SI", () =>
+{
+    Integrity(ifcS);
+    True(xs.Info.SummaryProperties && xs.Info.Warnings.Any(w => w.Contains("resumida")), "modo e aviso");
+    True(ifcS.Contains("'PASB_Resumo'") && !ifcS.Contains("'AS_AtomicElement'") && !ifcS.Contains("'AS_Origin'"), "só o resumo");
+    True(ifcS.Contains(@"'Tipo de a\X2\00E7\X0\o',$,IFCLABEL("), "tipo de aço");
+    True(ifcS.Contains("'Peso total',$,IFCMASSMEASURE(0.730835)"), "peso em kg");
+    True(ifcS.Contains("'Espessura',$,IFCLENGTHMEASURE(0.00475)"), "espessura em m");
+    True(ifcS.Contains("'Comprimento',$,IFCLENGTHMEASURE(0.196)") && ifcS.Contains("'Largura',$,IFCLENGTHMEASURE(0.1)"), "dimensões da chapa");
+    True(ifcS.Contains(@"'\X2\00C1\X0\rea de pintura',$,IFCAREAMEASURE(0.041)"), "área de pintura em m²");
+    True(ifcS.Contains(@"'Marca da pe\X2\00E7\X0\a',$,IFCLABEL('p12')"), "marca");
+    True(ifcS.Contains(@"'Di\X2\00E2\X0\metro',$,IFCLENGTHMEASURE(0.012)"), "diâmetro do parafuso");
+    True(repS.PropertySets == 3, "um Pset por elemento");
+});
+
 Console.WriteLine($"{passed} passaram, {failed} falharam");
 return failed == 0 ? 0 : 1;

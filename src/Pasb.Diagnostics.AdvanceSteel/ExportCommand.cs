@@ -83,9 +83,12 @@ public sealed class ExportCommand
             }
 
             // Leitura (escrita descartada, DBMOD conferido) → modelo neutro → IFC.
-            // Perfil de exportação: sem gravação física no disco a cada leitura e sem as leituras caras (docs/EXPORT-PERFORMANCE.md).
+            // Perfil de exportação: sem gravação física no disco a cada leitura e sem as leituras caras (docs/EXPORT-PERFORMANCE.md);
+            // resumida: só as propriedades principais. Sempre com o corpo sólido real de cada peça (docs/IFC-BODY.md).
+            var profile = settings.SummaryProperties ? Pasb.Diagnostics.Core.ReadProfile.ExportSummary : Pasb.Diagnostics.Core.ReadProfile.Export;
+            ed.WriteMessage(settings.SummaryProperties ? "\nPASB: exportação resumida (propriedades principais)." : "\nPASB: exportação completa (todas as propriedades).");
             var total = Stopwatch.StartNew();
-            var (outDir, safe) = Commands.Run(ed, "PASB_EXPORTAR_IFC", collect, Pasb.Diagnostics.Core.ReadProfile.Export);
+            var (outDir, safe) = Commands.Run(ed, "PASB_EXPORTAR_IFC", collect, profile, readBody: true);
             long readMs = total.ElapsedMilliseconds;
             if (!safe)
             {

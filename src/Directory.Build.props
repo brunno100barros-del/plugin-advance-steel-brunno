@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>0.13.1</Version>
+    <Version>0.14.0</Version>
     <Authors>Brunno Barros</Authors>
     <Product>Plugin Advance Steel - Brunno</Product>
     <!-- NÃ£o gravar caminhos da mÃ¡quina de quem compila nas DLLs publicadas (repositÃ³rio pÃºblico). -->

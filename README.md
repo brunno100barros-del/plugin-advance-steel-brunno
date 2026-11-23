@@ -23,10 +23,18 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 
 ## ⬇️ Instalar
 
-- **Baixar o instalador:** [PASB-0.13.1.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.13.1.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
+- **Baixar o instalador:** [PASB-0.14.0.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.0.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
 - **Guia de instalação:** [INSTALACAO.md](INSTALACAO.md)
 
 Não precisa compilar nem de administrador. Extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
+
+> [!TIP]
+> **Novidades da 0.14.0**
+> - **Exportar IFC com o corpo real das peças:** cortes, recortes, furos, perfis do usuário (ex.: `Usr PERFIL U ENRIJECIDO`) e parafusos com cabeça, arruelas e porca. Antes, esses perfis saíam sem corpo e os parafusos eram só cilindros.
+> - **Exportação resumida (padrão):** só tipo de aço, perfil, comprimento, peso por metro, peso total, área de pintura e marca (equivalentes para chapas, parafusos e soldas). Nos dados de um modelo de 35 mil objetos, as propriedades caíram de 3,57 milhões para 135 mil. A opção **Completas** continua na janela.
+> - **Importar IFC corrigido:** a importação não abortava mais por causa de uma peça com eixos levemente tortos (`eCannotScaleNonUniformly`). Agora o desenho aparece, com zoom na estrutura.
+>
+> Passo a passo de exportação e importação: [INSTALACAO.md, seção 4](INSTALACAO.md#4-tutorial-exportar-e-importar-ifc). Detalhes técnicos: [docs/IFC-BODY.md](docs/IFC-BODY.md) e [docs/IFC-IMPORT.md](docs/IFC-IMPORT.md).
 
 ## ✨ Visão geral
 
@@ -86,7 +94,7 @@ Propriedades sem equivalente IFC padrão vão para **Property Sets customizados*
 | 2 | Integração com Advance Steel + inventário | 🟢 Diagnóstico próprio validado em vigas, ligações, chapas, parafusos e soldas; outras categorias pendentes |
 | 3 | Modelo neutro e preservação integral | 🟢 v1 implementada (propriedades + geometria analítica) |
 | 4 | Georreferenciamento (SIRGAS 2000 / UTM ou X,Y,Z + rotação) | 🟢 v1 implementada e testada; validação em visualizador pendente |
-| 5 | Exportador IFC4 | 🟡 v1 gerando IFC dos modelos de teste; leitura otimizada na 0.13.1; validação em visualizador e corpo das vigas pendentes |
+| 5 | Exportador IFC4 | 🟡 Corpo real das peças e exportação resumida na 0.14.0; validação em visualizador pendente |
 | 6 | Interface, robustez e distribuição | 🟡 Instalador e guia prontos; validação em ambiente limpo pendente |
 
 Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -104,6 +112,7 @@ Lista completa de tarefas e critérios de saída em [docs/ROADMAP.md](docs/ROADM
 | [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) | Licenças de terceiros (xBIM, OpenCascade) |
 | [INSTALACAO.md](INSTALACAO.md) | Como instalar o plugin em qualquer computador (pacote pronto) |
 | [docs/EXPORT-PERFORMANCE.md](docs/EXPORT-PERFORMANCE.md) | Desempenho da exportação IFC: perfis de leitura e medição de tempo |
+| [docs/IFC-BODY.md](docs/IFC-BODY.md) | Corpo real das peças no IFC (cortes, furos, perfis do usuário, parafusos completos) e exportação resumida |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Módulos, fluxo de dados e responsabilidades |
 | [MCP-INTEGRATION.md](MCP-INTEGRATION.md) | Diretrizes de integração com o AdvancedSteelMCP |
 | [MCP-REVIEW.md](MCP-REVIEW.md) | Auditoria do código-fonte do MCP |

@@ -41,6 +41,13 @@ public static class DiagnosticImporter
             x.Info.Warnings.Add("Leituras omitidas na exportação por desempenho (use o Diagnóstico para obtê-las): " +
                 string.Join(", ", omitted.Select(v => v?.ToString())) + ".");
 
+        if (Str(run, "readProfile") == "export-summary")
+        {
+            x.Info.SummaryProperties = true;
+            x.Info.Warnings.Add("Exportação resumida: só as propriedades principais foram lidas (material, perfil, comprimento, pesos, " +
+                "área de pintura, marca; norma e diâmetro dos parafusos). Para todas as propriedades, exporte em modo completo.");
+        }
+
         bool millimeters = string.Equals(x.SourceDocument.DeclaredLengthUnit, "Millimeters", StringComparison.OrdinalIgnoreCase);
         if (!millimeters)
             x.Info.Warnings.Add($"Unidade do desenho '{x.SourceDocument.DeclaredLengthUnit ?? "?"}' não comprovada: comprimentos sem normalização.");
@@ -83,12 +90,22 @@ public static class DiagnosticImporter
                 };
                 Units.Apply(prop, millimeters);
                 e.Properties.Add(prop);
+                if (prop.Key == NeutralMesh.SourceKey) continue;   // corpo sólido: geometria, não relação nem propriedade
                 CollectRelationships(prop, e.Relationships);
                 AddInventory(x, e.Category, prop.Key);
             }
 
             e.Geometry = GeometryExtractor.Extract(e, millimeters ? 1e-3 : null);
             if (e.Geometry is null) e.ValidationMessages.Add("Sem geometria extraível das propriedades lidas.");
+            // O corpo sólido vira e.Geometry.Body; o registro bruto sai das propriedades (não vai para os Psets nem fica na memória).
+            if (e.Properties.FirstOrDefault(p => p.Key == NeutralMesh.SourceKey) is { } bodyProp)
+            {
+                e.Properties.Remove(bodyProp);
+                if (bodyProp.Status == PropertyStatus.ReadError)
+                    e.ValidationMessages.Add("Corpo sólido não lido (" + bodyProp.Error + "): geometria paramétrica de reserva.");
+                else if (bodyProp.Status == PropertyStatus.Read && e.Geometry?.Body is null)
+                    e.ValidationMessages.Add("Corpo sólido em formato inesperado: geometria paramétrica de reserva.");
+            }
 
             int errors = e.Properties.Count(p => p.Status == PropertyStatus.ReadError);
             int pending = e.Properties.Count(p => p.Status is PropertyStatus.Unavailable or PropertyStatus.ComplexNotSerialized);

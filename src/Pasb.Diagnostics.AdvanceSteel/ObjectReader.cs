@@ -38,9 +38,11 @@ internal static class ObjectReader
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> GetterCache = new();
 
     /// <param name="trace">Recebe uma linha antes de cada leitura (ver TraceLog); nulo = sem trace por leitura.</param>
+    /// <param name="readBody">true: lê também o corpo sólido real (ApprovedMethods.Body), usado pela exportação IFC.</param>
     public static (JsonObject header, List<PropertyRecord> records, string objectType) Read(FilerObject o, Action<string>? trace,
-        ReadProfile profile = ReadProfile.Diagnostic)
+        ReadProfile profile = ReadProfile.Diagnostic, bool readBody = false)
     {
+        bool summary = profile == ReadProfile.ExportSummary;
         Type t = o.GetType();
         // Sem trace por leitura, o RecordBuilder nem monta o texto de cada passo.
         var b = new RecordBuilder(AsValueSerializer.TrySerialize, trace);
@@ -71,6 +73,8 @@ internal static class ObjectReader
         foreach (PropertyInfo p in Getters(t))
         {
             string declaring = p.DeclaringType?.Name ?? "?";
+            // Resumida: só os getters da lista (os demais nem são chamados; não viram registro).
+            if (summary && !SummaryFields.Getters.Contains(declaring + "." + p.Name)) continue;
             if (p.PropertyType.IsPointer || p.PropertyType.IsByRef)
             {
                 b.Unavailable(p.Name, declaring, ReadSource.Getter, p.PropertyType, "Tipo ponteiro nativo; não serializável.");
@@ -86,7 +90,7 @@ internal static class ObjectReader
         }
 
         // 5.3 Métodos aprovados, chamados explicitamente
-        ApprovedMethods.Read(o, b, profile);
+        ApprovedMethods.Read(o, b, profile, readBody);
 
         return (header, b.Records, t.Name);
     }
