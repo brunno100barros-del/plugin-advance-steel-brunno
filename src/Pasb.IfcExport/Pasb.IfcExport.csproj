@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Exportador IFC4 próprio (IFC-EXPORTER.md): consome só o modelo neutro; sem biblioteca IFC externa. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pasb.IfcExport</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pasb.Model\Pasb.Model.csproj" />
+    <ProjectReference Include="..\Pasb.Georeferencing\Pasb.Georeferencing.csproj" />
+  </ItemGroup>
+
+</Project>

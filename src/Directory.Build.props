@@ -1,0 +1,18 @@
+<Project>
+  <!-- ConfiguraÃ§Ã£o comum aos projetos em src/. -->
+  <PropertyGroup>
+    <AcadDir Condition="'$(AcadDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2027</AcadDir>
+    <AdvsDir>$(AcadDir)\ADVS</AdvsDir>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>0.13.1</Version>
+    <Authors>Brunno Barros</Authors>
+    <Product>Plugin Advance Steel - Brunno</Product>
+    <!-- NÃ£o gravar caminhos da mÃ¡quina de quem compila nas DLLs publicadas (repositÃ³rio pÃºblico). -->
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/pasb/$(MSBuildProjectName)</PathMap>
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
+  </PropertyGroup>
+</Project>

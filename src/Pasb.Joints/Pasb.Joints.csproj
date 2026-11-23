@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ligações nativas do PASB para o Advance Steel 2027 (interface IRule do SDK, "Joints NET.docx").
+    O Advance Steel carrega esta DLL da pasta ADVS, pelo registro no banco AstorRules (docs/NATIVE-JOINTS.md).
+    Não depende de nenhuma outra DLL do PASB: a geometria (Bracing.cs) é compilada junto, para não haver
+    duas cópias de Pasb.Connector carregadas (uma do bundle e outra da pasta ADVS).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Pasb.Joints</RootNamespace>
+    <AssemblyName>PasbJoints</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <NoWarn>$(NoWarn);CA1416;MSB3270;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Pasb.Connector\Bracing.cs" Link="Shared\Bracing.cs" />
+    <Compile Include="..\Pasb.Connector\SagRods.cs" Link="Shared\SagRods.cs" />
+    <EmbeddedResource Include="Images\*.png" LogicalName="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="acdbmgd"><HintPath>$(AcadDir)\acdbmgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="accoremgd"><HintPath>$(AcadDir)\accoremgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASCADLinkMgd"><HintPath>$(AdvsDir)\ASCADLinkMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASGeometryMgd"><HintPath>$(AdvsDir)\ASGeometryMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASObjectsMgd"><HintPath>$(AdvsDir)\ASObjectsMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="ASProfilesMgd"><HintPath>$(AdvsDir)\ASProfilesMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="DotNetRoots"><HintPath>$(AdvsDir)\Extensions\DotNetRoots.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,33 @@
+PASB - Plugin Advance Steel Brunno  (Coordix - BIMOFFICE)
+Versao: {{VERSION}}
+
+REQUISITOS
+- Windows 10/11 64 bits
+- Advance Steel 2027 instalado (o plugin so carrega no Advance Steel 2027)
+- Nao precisa de administrador nem de instalar nada alem disto
+
+INSTALAR
+1. Feche o Advance Steel.
+2. Descompacte este .zip inteiro numa pasta (por exemplo, Downloads\PASB-{{VERSION}}).
+   Nao rode o instalador de dentro do .zip.
+3. Dois cliques em  Instalar-PASB.cmd
+4. Abra o Advance Steel 2027.
+5. No aviso "arquivo executavel nao assinado" do PASB, clique em  Sempre carregar.
+6. A aba PASB aparece na faixa de opcoes logo depois que o programa termina de abrir.
+
+ATUALIZAR
+Baixe o .zip da versao nova e repita os passos 1 a 5 (o instalador substitui a versao anterior).
+
+REMOVER
+Feche o Advance Steel e de dois cliques em  Desinstalar-PASB.cmd
+
+CONECTOR IA (opcional, so se usar o Claude Code nesse computador)
+Depois de instalar, de dois cliques em  Registrar-Conector-IA.cmd  (uma vez) e reinicie o Claude Code.
+No Advance Steel, clique em PASB > Conector IA para ligar.
+
+PROBLEMAS
+- "O AutoCAD / Advance Steel esta aberto": feche o programa (confira no Gerenciador de Tarefas se nao ficou acad.exe aberto).
+- A aba PASB nao aparece: veja se clicou em "Nao carregar" no aviso de seguranca; instale de novo e escolha "Sempre carregar".
+- Registro de inicio do plugin: %LOCALAPPDATA%\PASB\inicio.log
+
+Passo a passo completo: arquivo INSTALACAO.md em https://github.com/brunno100barros-del/plugin-advance-steel-brunno

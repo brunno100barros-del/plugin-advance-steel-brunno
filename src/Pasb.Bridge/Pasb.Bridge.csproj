@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ponte local do Conector IA (docs/AI-CONNECTOR.md): TCP só em 127.0.0.1, com token. Sem Autodesk, sem bibliotecas externas. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pasb.Bridge</RootNamespace>
+  </PropertyGroup>
+
+</Project>

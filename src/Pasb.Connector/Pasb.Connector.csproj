@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Lógica das ferramentas do Conector IA sem Autodesk (testável fora do Advance Steel):
+    resumo do modelo, leitura de um objeto e exportação IFC a partir da saída do diagnóstico.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Pasb.Connector</RootNamespace>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pasb.Bridge\Pasb.Bridge.csproj" />
+    <ProjectReference Include="..\Pasb.Model\Pasb.Model.csproj" />
+    <ProjectReference Include="..\Pasb.IfcExport\Pasb.IfcExport.csproj" />
+    <ProjectReference Include="..\Pasb.Ui\Pasb.Ui.csproj" />
+  </ItemGroup>
+
+</Project>

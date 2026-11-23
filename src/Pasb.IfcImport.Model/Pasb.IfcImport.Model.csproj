@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Formato de troca da importação IFC (docs/IFC-IMPORT.md): resumo do arquivo (tipos, níveis) e pacote de malhas.
+    Sem xBIM e sem Autodesk: usado pelo Pasb.IfcImport.exe (que lê o IFC), pela janela e pelo plugin (que desenha).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pasb.IfcImport.Model</RootNamespace>
+  </PropertyGroup>
+
+</Project>

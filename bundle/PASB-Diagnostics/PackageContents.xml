@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifesto do plugin PASB (Plugin Advance Steel - Brunno).
+  - Carrega so no Advance Steel 2027 (Platform ADVS, R26.0).
+  - Desde a 0.4.0 carrega na inicializacao do AutoCAD, para exibir a aba PASB na faixa de opcoes.
+    A inicializacao so cria a aba; nenhuma leitura do desenho acontece sem um comando PASB_*.
+  - 0.5.0: Conector IA (PASB_CONECTOR_IA). A ponte local so liga quando o usuario clica no botao.
+    Contents\Mcp\Pasb.Mcp.exe e o servidor MCP iniciado pelo assistente de IA (nao e carregado pelo AutoCAD).
+  - A pasta continua PASB-Diagnostics.bundle para que a atualizacao substitua a instalacao anterior.
+-->
+<ApplicationPackage SchemaVersion="1.0"
+                    AutodeskProduct="AutoCAD"
+                    ProductType="Application"
+                    Name="PASB - Plugin Advance Steel Brunno"
+                    AppVersion="0.13.1"
+                    FriendlyVersion="0.13.1"
+                    Description="Exportacao IFC4 georreferenciada com preservacao de propriedades e diagnostico somente leitura para o Advance Steel 2027."
+                    Author="Brunno Barros"
+                    SupportedLocales="Enu,Ptb"
+                    ProductCode="{4B1BC0F6-C139-4DC5-8B0F-E2B118439C1C}"
+                    UpgradeCode="{0867289E-2C5F-454F-8D39-0C1C5D6498DD}">
+
+  <CompanyDetails Name="Brunno Barros" />
+
+  <Components Description="Advance Steel 2027">
+    <RuntimeRequirements OS="Win64" Platform="ADVS" SeriesMin="R26.0" SeriesMax="R26.0" />
+    <ComponentEntry AppName="PASB"
+                    Version="0.13.1"
+                    ModuleName="./Contents/Pasb.Diagnostics.AdvanceSteel.dll"
+                    AppDescription="PASB para Advance Steel 2027"
+                    LoadOnCommandInvocation="False"
+                    LoadOnAutoCADStartup="True">
+      <AssemblyMappings>
+        <AssemblyMappingFolder Path="./Contents" />
+      </AssemblyMappings>
+      <Commands GroupName="PASB">
+        <Command Global="PASB_EXPORTAR_IFC" Local="PASB_EXPORTAR_IFC" />
+        <Command Global="PASB_IMPORTAR_IFC" Local="PASB_IMPORTAR_IFC" />
+        <Command Global="PASB_DIAG_VERSION" Local="PASB_DIAG_VERSION" />
+        <Command Global="PASB_DIAG_SEL"     Local="PASB_DIAG_SEL" />
+        <Command Global="PASB_DIAG_ALL"     Local="PASB_DIAG_ALL" />
+        <Command Global="PASB_LISTA_MATERIAL" Local="PASB_LISTA_MATERIAL" />
+        <Command Global="PASB_NUMERAR_ITENS" Local="PASB_NUMERAR_ITENS" />
+        <Command Global="PASB_CONTRAVENTAMENTO" Local="PASB_CONTRAVENTAMENTO" />
+        <Command Global="PASB_EDITAR_CONTRAVENTAMENTO" Local="PASB_EDITAR_CONTRAVENTAMENTO" />
+        <Command Global="PASB_CONECTOR_IA"  Local="PASB_CONECTOR_IA" />
+        <Command Global="PASB_IA_EXECUTAR"  Local="PASB_IA_EXECUTAR" />
+      </Commands>
+    </ComponentEntry>
+  </Components>
+
+</ApplicationPackage>

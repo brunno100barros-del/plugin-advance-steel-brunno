@@ -1,0 +1,36 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pasb.Diagnostics.Core/Pasb.Diagnostics.Core.csproj" />
+    <Project Path="src/Pasb.Diagnostics.AdvanceSteel/Pasb.Diagnostics.AdvanceSteel.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/Pasb.Model/Pasb.Model.csproj" />
+    <Project Path="src/Pasb.Georeferencing/Pasb.Georeferencing.csproj" />
+    <Project Path="src/Pasb.IfcExport/Pasb.IfcExport.csproj" />
+    <Project Path="src/Pasb.Ui/Pasb.Ui.csproj" />
+    <Project Path="src/Pasb.Bridge/Pasb.Bridge.csproj" />
+    <Project Path="src/Pasb.Connector/Pasb.Connector.csproj" />
+    <Project Path="src/Pasb.Mcp/Pasb.Mcp.csproj" />
+    <Project Path="src/Pasb.IfcImport.Model/Pasb.IfcImport.Model.csproj" />
+    <Project Path="src/Pasb.Joints/Pasb.Joints.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/Pasb.IfcImport/Pasb.IfcImport.csproj">
+      <Platform Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pasb.Diagnostics.Core.Tests/Pasb.Diagnostics.Core.Tests.csproj" />
+    <Project Path="tests/Pasb.Model.Tests/Pasb.Model.Tests.csproj" />
+    <Project Path="tests/Pasb.Georeferencing.Tests/Pasb.Georeferencing.Tests.csproj" />
+    <Project Path="tests/Pasb.IfcExport.Tests/Pasb.IfcExport.Tests.csproj" />
+    <Project Path="tests/Pasb.Ui.Tests/Pasb.Ui.Tests.csproj" />
+    <Project Path="tests/Pasb.Connector.Tests/Pasb.Connector.Tests.csproj" />
+    <Project Path="tests/Pasb.IfcImport.Tests/Pasb.IfcImport.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/ApiInventory/ApiInventory.csproj" />
+    <Project Path="tools/ToNeutral/ToNeutral.csproj" />
+    <Project Path="tools/ToIfc/ToIfc.csproj" />
+  </Folder>
+</Solution>

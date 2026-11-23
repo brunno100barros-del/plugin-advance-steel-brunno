@@ -36,12 +36,14 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 - [ ] Converter geometria e semântica.
 - [ ] Exportar todas as propriedades acessíveis em atributos/Psets padrão ou customizados.
 - [ ] Incorporar georreferenciamento IFC4.
+- [x] Leitura otimizada para exportação (perfil de trabalho, 0.13.1; docs/EXPORT-PERFORMANCE.md).
+- [ ] Medir o tempo de exportação antes/depois num modelo real.
 - [ ] Validar em visualizador independente e comparar propriedades.
 
 ## Etapa 6 — Interface e distribuição
 - [ ] Interface de ponto de controle e exportação.
 - [ ] Relatório de cobertura, perdas e avisos.
-- [x] Instalador 0.13.0 e guia de instalação (ramo `docs/sdk-2027-inventory`).
+- [x] Instalador 0.13.0 e guia de instalação.
 - [ ] Logs e robustez da instalação.
 - [ ] Validação do instalador e do plugin em ambiente limpo com Advance Steel 2027.
 

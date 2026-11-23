@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Leitor de IFC da importação (docs/IFC-IMPORT.md). Roda FORA do AutoCAD: o plugin chama este programa,
+    que usa a xBIM (Xbim.Essentials + Xbim.Geometry/OpenCascade) para ler o IFC e devolve o resumo e as malhas.
+    Assim uma falha do motor geométrico não derruba o Advance Steel, e as bibliotecas da xBIM não conflitam com as do AutoCAD.
+    Licenças: xBIM CDDL-1.0; OpenCascade LGPL-2.1 com exceção OCCT (ver THIRD-PARTY-NOTICES.md).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Pasb.IfcImport</RootNamespace>
+    <AssemblyName>Pasb.IfcImport</AssemblyName>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Não usar InvariantGlobalization: com ela a geração de geometria da xBIM falha ("Processing halted due to model error"). -->
+    <NoWarn>$(NoWarn);NU1603;NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Xbim.Essentials" Version="6.1.605" />
+    <PackageReference Include="Xbim.Geometry" Version="6.3.891-netcore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pasb.IfcImport.Model\Pasb.IfcImport.Model.csproj" />
+  </ItemGroup>
+
+</Project>

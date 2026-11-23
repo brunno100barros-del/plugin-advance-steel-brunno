@@ -1,6 +1,16 @@
 # Contrato do modelo neutro
 
-Status: especificação da Etapa 3. Ainda não representa implementação executável nem validação com amostras reais do usuário.
+Status: **implementado (v1, 2026-11-20)** em `src/Pasb.Model`, com conversor da saída do diagnóstico (`DiagnosticImporter`), gravação em JSON e CLI `tools/ToNeutral`. Testes: 12/12 (`tests/Pasb.Model.Tests`). Executado sobre saídas reais: Portal.dwg (26 elementos, 2.716 propriedades, 73 relações) e DWG de teste (15 elementos, 903 propriedades, 14 relações), com todas as propriedades preservadas. Geometria e posicionamento ainda não convertidos (ver seção 10).
+
+## 10. Implementação v1: decisões e limites
+
+- Categorias pela cadeia de herança (`Categories`); tipos sem regra viram `other:<Tipo>`, sem descarte.
+- Relações: qualquer valor lido com `handle` vira `Relationship`, com o nome técnico da propriedade como tipo (por exemplo `PassiveConstructionObject.Drivers`).
+- Unidades só onde comprovadas (Testes 3 e 8): pesos em g → kg, áreas em mm² → m², volume em mm³ → m³, peso específico em kg/mm³ → kg/m³ e comprimentos selecionados em mm → m (somente com `INSUNITS = Millimeters`). Fora disso, só o valor bruto.
+- `SourceUniqueId` (GetUniqueId) é guardado separado de `IfcGlobalId`, que permanece nulo até a exportação.
+- Objetos que a API não abre viram elementos `Unsupported`, com a identificação (classe AutoCAD).
+- Estado `Partial` quando há leitura `ReadError`, `Unavailable` ou `ComplexNotSerialized` (por exemplo, `GetProfType` nas vigas e `getPrimaryJoint` nas ligações).
+- Pendente: geometria (eixo, contorno, sólido) e posicionamento normalizados; espessura de solda inferior a ignorar quando não houver cordão inferior.
 
 ## 1. Objetivo
 Definir um formato interno independente do Advance Steel, do protocolo MCP e da biblioteca IFC. O exportador deverá consumir somente este modelo, nunca o JSON bruto do MCP.

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Georreferenciamento (GEOREFERENCING.md): matemática pura, sem Autodesk e sem biblioteca IFC. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pasb.Georeferencing</RootNamespace>
+  </PropertyGroup>
+
+</Project>

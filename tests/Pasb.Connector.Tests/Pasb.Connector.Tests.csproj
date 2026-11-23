@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Pasb.Bridge\Pasb.Bridge.csproj" />
+    <ProjectReference Include="..\..\src\Pasb.Connector\Pasb.Connector.csproj" />
+    <ProjectReference Include="..\..\src\Pasb.Mcp\Pasb.Mcp.csproj" />
+  </ItemGroup>
+
+</Project>
