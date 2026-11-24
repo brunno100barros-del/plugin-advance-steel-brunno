@@ -27,6 +27,7 @@ internal static class Program
         Console.OutputEncoding = new UTF8Encoding(false);
         try
         {
+            XbimLog.Start();
             if (args.Length == 3 && args[0] == "scan") { File.WriteAllText(args[2], ScanJson.Serialize(Reader.Scan(args[1], Progress.Report)), new UTF8Encoding(false)); return 0; }
             if (args.Length == 3 && args[0] == "convert")
             {
@@ -42,7 +43,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine(ex.GetType().Name + ": " + ex.Message);
+            Console.Error.WriteLine(ex.GetType().Name + ": " + ex.Message + (XbimLog.Path is { } log ? " (detalhes em " + log + ")" : ""));
             return 1;
         }
     }
@@ -66,6 +67,7 @@ internal static class Progress
 internal static class Reader
 {
     private static readonly HashSet<string> Excluded = new(StringComparer.Ordinal) { "IfcOpeningElement", "IfcSpace" };
+    private const int MaxGeometryRetries = 20;
 
     /// <summary>Abre sempre em memória (o banco temporário em disco da xBIM para arquivos grandes é muito mais lento), com progresso.</summary>
     private static IfcStore Open(string file, Action<int, string> progress, int from, int to)
@@ -116,9 +118,16 @@ internal static class Reader
         var storeys = new HashSet<string>(req.Storeys, StringComparer.Ordinal);
         double k = 1.0 / model.ModelFactors.OneMetre;   // unidades do IFC → metros
 
-        var ctx = new Xbim3DModelContext(model);
         progress(25, "Gerando a geometria (triangulação)");
-        ctx.CreateContext((pct, state) => GeometryStage(progress, pct, state?.ToString() ?? ""), true);
+        pkg.Warnings.AddRange(GeometryRepair.RepairBrokenArcs(model));
+        // A xBIM interrompe tudo na primeira peça sem solução; a peça entra sem o recorte que falhou e a geometria é refeita.
+        Xbim3DModelContext ctx;
+        for (int attempt = 0; ; attempt++)
+        {
+            ctx = new Xbim3DModelContext(model);
+            try { ctx.CreateContext((pct, state) => GeometryStage(progress, pct, state?.ToString() ?? ""), true); break; }
+            catch (Exception ex) when (attempt < MaxGeometryRetries && GeometryRepair.TryDropFailedClipping(model, ex, out string w)) { pkg.Warnings.Add(w); }
+        }
         progress(85, "Preparando as malhas");
 
         var geomIds = new Dictionary<int, int>();

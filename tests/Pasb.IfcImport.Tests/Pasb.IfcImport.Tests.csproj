@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <None Include="fixtures\niveis.ifc" Link="niveis.ifc" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="fixtures\recorte_quebrado.ifc" Link="recorte_quebrado.ifc" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

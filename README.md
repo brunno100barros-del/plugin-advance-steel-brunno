@@ -23,8 +23,8 @@ Plugin independente para **Autodesk Advance Steel 2027** que extrai o modelo via
 
 ## ⬇️ Instalar
 
-- **Baixar o instalador (um arquivo só, recomendado):** [PASB-Instalador-0.14.2.exe](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-Instalador-0.14.2.exe): baixe e dê dois cliques.
-- **Ou o pacote .zip:** [PASB-0.14.2.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.2.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
+- **Baixar o instalador (um arquivo só, recomendado):** [PASB-Instalador-0.14.3.exe](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-Instalador-0.14.3.exe): baixe e dê dois cliques.
+- **Ou o pacote .zip:** [PASB-0.14.3.zip](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.3.zip) (ou a pasta [`release/`](release/), sempre com a versão mais recente)
 - **Guia de instalação:** [INSTALACAO.md](INSTALACAO.md)
 
 Não precisa compilar. Feche o Advance Steel antes. Com o **.exe**, é só executar. Com o **.zip**, extraia o zip inteiro e dê dois cliques em `Instalar-PASB.cmd`.
@@ -36,6 +36,8 @@ Em cada computador:
 - Se recusar o pedido de administrador, o plugin funciona, mas as duas ligações não: rode o instalador de novo.
 
 > [!TIP]
+> **0.14.3:** a **Importação de IFC** não para mais por causa de uma peça. Antes, um recorte que o motor geométrico não conseguia montar (ex.: paredes do Revit com o arco do contorno do recorte errado) cancelava o arquivo inteiro com "Processing halted due to model error". Agora esse arco é trocado por reta e a peça entra com o recorte; se ainda assim não houver solução, a peça entra sem o recorte. Os dois casos aparecem como aviso, e o log da xBIM fica em `%LOCALAPPDATA%\PASB\ifc-import.log`.
+>
 > **0.14.2:** os instaladores (o `.exe` e o `Instalar-PASB.cmd`) passam a registrar as ligações nativas do **Contraventamento em X** e do **Sistema antidobra** (o Windows pede administrador uma vez). Antes, só o `Registrar-Macros-PASB.cmd` fazia isso; sem ele, o contraventamento caía em silêncio na versão simples antiga e o antidobra não funcionava. Agora o botão avisa quando as ligações faltam ou são de outra versão.
 >
 > **0.14.1:** chapas e outras peças com furos não aparecem mais "transparentes" no visualizador. As faces com furos são trianguladas no próprio IFC, e as regiões que o Advance Steel junta numa face só (ex.: várias cabeças de parafuso no mesmo plano) são separadas.

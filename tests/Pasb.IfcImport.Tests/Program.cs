@@ -133,6 +133,20 @@ try
         }
     });
 
+    Run("recorte com contorno quebrado não interrompe a importação", () =>
+    {
+        // Antes da 0.14.3 a xBIM parava o modelo inteiro ("Processing halted due to model error").
+        MeshPackage p = Convert(new ConvertRequest { IfcFile = Path.Combine(AppContext.BaseDirectory, "recorte_quebrado.ifc") });
+        MeshInstance a = p.Instances.Single(i => i.Name == "Parede A arco quebrado");
+        MeshInstance b = p.Instances.Single(i => i.Name == "Parede B contorno aberto");
+        MeshGeometry ga = p.Geometries.Single(x => x.Id == a.GeometryId), gb = p.Geometries.Single(x => x.Id == b.GeometryId);
+        Console.WriteLine($"      parede A: {ga.TriangleCount} triângulos, parede B: {gb.TriangleCount}");
+        True(ga.TriangleCount > 0 && gb.TriangleCount > 0, "as duas paredes têm malha");
+        True(p.Warnings.Any(w => w.Contains("Parede A") && w.Contains("trocado por reta")), "aviso do arco reparado: " + string.Join(" | ", p.Warnings));
+        True(p.Warnings.Any(w => w.Contains("Parede B") && w.Contains("sem esse recorte")), "aviso do recorte descartado: " + string.Join(" | ", p.Warnings));
+        True(!p.Warnings.Any(w => w.Contains("Parede A") && w.Contains("sem esse recorte")), "parede A manteve o recorte");
+    });
+
     Run("IFC inexistente: erro claro", () =>
     {
         var (code, err, _) = Exe("scan", Path.Combine(tmp, "nao-existe.ifc"), Path.Combine(tmp, "x.json"));

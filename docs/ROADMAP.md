@@ -47,7 +47,8 @@ Este roadmap separa preparação, validação técnica e implementação. Uma et
 ## Etapa 6 — Interface e distribuição
 - [ ] Interface de ponto de controle e exportação.
 - [ ] Relatório de cobertura, perdas e avisos.
-- [x] Instalador 0.14.2 e guia de instalação.
+- [x] Instalador 0.14.3 e guia de instalação.
+- [x] Importação de IFC tolerante a recortes sem solução no motor geométrico (0.14.3; docs/IFC-IMPORT.md).
 - [ ] Logs e robustez da instalação.
 - [ ] Validação do instalador e do plugin em ambiente limpo com Advance Steel 2027.
 

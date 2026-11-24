@@ -15,7 +15,7 @@ Você **não precisa** de Git, .NET SDK, Visual Studio nem do código-fonte.
 
 ## Jeito mais rápido: instalador .exe
 
-1. Baixe **[PASB-Instalador-0.14.2.exe](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-Instalador-0.14.2.exe)**: é um arquivo só, com o plugin dentro.
+1. Baixe **[PASB-Instalador-0.14.3.exe](https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-Instalador-0.14.3.exe)**: é um arquivo só, com o plugin dentro.
 2. **Feche o Advance Steel.**
 3. Dê **dois cliques** no arquivo baixado e clique em **OK**.
    - Se o Windows mostrar "O Windows protegeu o computador" (SmartScreen), clique em **Mais informações → Executar assim mesmo**. O instalador não é assinado digitalmente.
@@ -29,15 +29,15 @@ O instalador também registra as ligações nativas (Contraventamento em X e Sis
 ## 1. Baixar o pacote
 
 1. Abra o repositório: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno>
-2. Entre na pasta **`release`** e clique no arquivo **`PASB-<versão>.zip`** (por exemplo, `PASB-0.14.2.zip`).
+2. Entre na pasta **`release`** e clique no arquivo **`PASB-<versão>.zip`** (por exemplo, `PASB-0.14.3.zip`).
 3. Clique em **Download** (ícone de seta para baixo, à direita, ou em "Download raw file").
 
-> Link direto da versão atual: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.2.zip>
+> Link direto da versão atual: <https://github.com/brunno100barros-del/plugin-advance-steel-brunno/raw/main/release/PASB-0.14.3.zip>
 
 **Conferir o download (opcional):** o arquivo `PASB-<versão>.zip.sha256`, ao lado do zip, traz o código de verificação. No PowerShell:
 
 ```powershell
-Get-FileHash "$env:USERPROFILE\Downloads\PASB-0.14.2.zip" -Algorithm SHA256
+Get-FileHash "$env:USERPROFILE\Downloads\PASB-0.14.3.zip" -Algorithm SHA256
 ```
 
 O resultado deve ser igual ao do arquivo `.sha256`, sem diferenciar maiúsculas de minúsculas.
@@ -47,7 +47,7 @@ O resultado deve ser igual ao do arquivo `.sha256`, sem diferenciar maiúsculas 
 1. **Feche o Advance Steel.** Se precisar, confira no Gerenciador de Tarefas que não ficou nenhum `acad.exe` aberto.
 2. **Descompacte o .zip inteiro.** Clique com o botão direito no arquivo, escolha **Extrair tudo...** e confirme em **Extrair**.
    - Não rode o instalador de dentro do .zip sem extrair.
-3. Abra a pasta extraída, `PASB-0.14.2`, e dê **dois cliques em `Instalar-PASB.cmd`**.
+3. Abra a pasta extraída, `PASB-0.14.3`, e dê **dois cliques em `Instalar-PASB.cmd`**.
    - Se o Windows mostrar "O Windows protegeu o computador" (SmartScreen), clique em **Mais informações → Executar assim mesmo**. O instalador é um script de texto; você pode abrir o `Instalar-PASB.ps1` no Bloco de Notas e ler o que ele faz.
 4. Espere a mensagem **"Pronto."** e aperte uma tecla para fechar.
 

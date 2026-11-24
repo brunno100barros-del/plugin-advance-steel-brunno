@@ -56,6 +56,18 @@ Agora:
 - cada peça é isolada: se uma falhar, as outras entram, e o resumo informa quantas falharam e o primeiro erro;
 - ao final, **ZOOM Extensão**, para a estrutura aparecer mesmo num desenho novo.
 
+## Correção na 0.14.3: "Processing halted due to model error"
+
+A xBIM interrompe o modelo **inteiro** na primeira peça cujo sólido o OpenCascade não consegue montar. A mensagem era só "Processing halted due to model error, see logs", sem log, e nenhum filtro de tipo ou nível evitava o erro: a geometria é gerada para o modelo todo antes do filtro.
+
+No IFC de arquitetura do SESI (Revit, IFC2X3), duas paredes baixas tinham um recorte (`IfcBooleanClippingResult` com `IfcPolygonalBoundedHalfSpace`) cujo contorno trazia um arco com o centro errado: as pontas do arco caíam a ~1,36 m dos segmentos vizinhos, o contorno não fechava (`Segments are not contiguous`) e a importação toda falhava.
+
+Agora, só na cópia em memória (o arquivo IFC não é alterado):
+- **arco de contorno de recorte que não fecha** com os vizinhos (folga maior que 1 mm) é trocado por uma **reta** entre o fim do segmento anterior e o início do seguinte; a peça entra **com** o recorte. Nas paredes do SESI o arco tinha 64 mm de corda, e a reta desvia ~0,3 mm;
+- se um recorte **ainda** não tiver solução, a peça entra **sem esse recorte** (o booleano é trocado pelo primeiro operando) e a geometria é refeita, até 20 vezes;
+- os dois casos viram **aviso** na linha de comando, com o tipo, o nome e o GUID da peça;
+- o log da xBIM (avisos e erros) é gravado em `%LOCALAPPDATA%\PASB\ifc-import.log`, refeito a cada importação.
+
 ## Limitações conhecidas
 
 - **Solid3d** a partir de malha: o AutoCAD só converte malhas fechadas. Peças abertas ou com faces soltas entram como malha (opção ligada por padrão) e são contadas no resumo da linha de comando.
@@ -77,4 +89,5 @@ xBIM (CDDL-1.0) e OpenCascade (LGPL-2.1 com exceção OCCT), sem modificação, 
 - as cores;
 - o compartilhamento de geometria;
 - os filtros por nível e por tipo;
-- o formato binário.
+- o formato binário;
+- o IFC `fixtures\recorte_quebrado.ifc` (duas paredes com recorte quebrado: arco errado é reparado, contorno aberto entra sem recorte) importa sem interromper.
